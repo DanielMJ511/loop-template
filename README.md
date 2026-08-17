@@ -14,8 +14,9 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-14 files, in three subfolders (`agents/`, `skills/`, `loop-templates/`). None of them is a
-`settings.json`, so your own settings are never touched.
+18 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
+`settings.json`, so copying the template never touches your own settings — including the two scripts
+in `hooks/`, which the agents register themselves. See [The audit hook](#the-audit-hook).
 
 **If the project has no `.claude/` folder yet** — copy the whole folder in:
 
@@ -40,7 +41,7 @@ Note the `/.` and the `*`. Without them, `cp -r src/.claude .` copies the folder
 existing one and you get `.claude/.claude` — broken, and silently so.
 
 **Watch for name collisions.** If the project already defines an agent named `builder`,
-`code-reviewer`, `docs-writer`, `implementer`, `test-runner` or `teacher`, or a skill named
+`code-reviewer`, `docs-writer`, `implementer`, `test-runner`, `verifier`, `security-auditor` or `teacher`, or a skill named
 `orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or skip those rather than
 overwriting a project's own tuned agents with these generic ones.
 
@@ -77,7 +78,7 @@ Two things matter more here than anywhere else:
 
 ```
 /loop-plan       # decompose the work, grill it, record decisions — writes no code
-/orchestrate     # drive each task through build → test → review → record
+/orchestrate     # drive each task through build → test → verify → review → record
 /retro           # bank recurring friction as constraints; retire what no longer applies
 /loop-handoff    # checkpoint mid-session so /orchestrate resumes instead of restarting
 ```
@@ -91,7 +92,7 @@ Two things matter more here than anywhere else:
 |---|---|---|
 | Machinery — skills and agents | `.claude/` | Never |
 | Profile — commands, conventions, tracker, git policy | `loop/PROFILE.md` | Generated once, then evolves |
-| Working state — plan, journal, lessons, packets | `loop/` | Per unit of work |
+| Working state — plan, journal, lessons, packets, audit log | `loop/` | Per unit of work |
 
 If the loop does the wrong thing for your project, the fix is in the profile. Editing a skill to
 suit one project forks the machinery and you lose every later improvement.
@@ -160,6 +161,76 @@ project path and will not appear in your next repo — which is the usual reason
 Either tier satisfies step 4. `/loop-plan` records which one ran in `loop/PLAN.md`, so the journal
 never implies a full session happened when it didn't.
 
+## Which model runs what
+
+Every stage pins its own model in frontmatter, so the loop costs the same whatever your session
+model is, and you never toggle `/model` by hand.
+
+| Stage | Model | Why |
+|---|---|---|
+| `/loop-init`, `/loop-plan`, `/retro` | `opus` | Their output is durable and nothing downstream re-checks it |
+| `/orchestrate`, `/loop-handoff` | `sonnet` | Routing and transcription against heavily-scripted rules |
+| `implementer`, `security-auditor` | `opus` | The escalation tier diagnoses rather than retries; the auditor reads a whole unit at once |
+| `builder`, `code-reviewer`, `docs-writer`, `verifier` | `sonnet` | The standard tier |
+| `test-runner` | `haiku` | High-output, low-reasoning: run the suite, digest the log |
+
+The rule is **durability, not difficulty**. `/loop-plan` writes packets that no later stage
+re-verifies, `/loop-init` writes the profile every agent then trusts, and `/retro` writes lessons
+that persist across milestones — a bad line in any of those is paid for repeatedly. `/orchestrate`
+looks like the important one because it drives everything, but its judgment calls (prerequisite vs.
+test failure, review severity, gate substitution) are all spelled out in the skill text; it is
+following a decision table, not deriving one.
+
+**If you'd rather run `/orchestrate` on Opus**, delete the `model:` line from
+`.claude/skills/orchestrate/SKILL.md` and it inherits your session model. Worth measuring rather
+than guessing: run a unit each way and compare `implementer` line counts in `loop/AUDIT.log`. If
+escalations per unit don't rise on Sonnet, the downgrade is free.
+
+One wrinkle: a `model:` override lasts for the rest of the current turn and then reverts. An
+`/orchestrate` run that stops to ask you something resumes on your session model, not Sonnet.
+
+## The audit hook
+
+Optional, offered by `/loop-init`, and the only piece of the loop that goes in a settings file.
+
+`.claude/hooks/audit-subagent.ps1` (and its `.sh` twin) is a `SubagentStop` hook. The harness runs it
+as each spawn ends, and it appends one line to `loop/AUDIT.log`:
+
+```
+2026-08-17T17:38:53Z | builder       | T-003 | -                 | 7f3a91cc
+2026-08-17T17:38:54Z | test-runner   | T-003 | NO TESTS EXECUTED | bb20e4d1
+2026-08-17T17:38:55Z | code-reviewer | T-003 | CHANGES REQUESTED | c9d81aa2
+```
+
+**Why it earns its place:** `/retro` is built on the premise that agents reporting on themselves
+can't be trusted, which is why it reads the commits too. This is a third record, and a stricter one —
+written by the harness, so no agent can shape it, and written per spawn rather than per completed
+task, so it's the only record that survives a run that died mid-task. When `docs-writer` records
+"builder only, no respins" and the log shows three `builder` lines, that gap is the lesson.
+
+It is deliberately structural — who ran, when, on what, with what verdict token. No report content,
+so it never leaks a long summary and never needs truncating. The narrative stays in `loop/STATE.md`.
+
+**Nothing to install.** Each of the five loop agents declares it in its own frontmatter as a `Stop`
+hook; Claude Code converts that to `SubagentStop` and unregisters it when the agent finishes. So it
+ships with the template, touches no settings file, and only ever fires for the loop's own agents —
+an `Explore` or `Plan` spawn in the same project writes nothing.
+
+Two things it needs, both of which fail silently:
+
+- **`jq` or `python3` on PATH**, to read the hook payload. With neither, you get an empty log that
+  looks identical to "nothing has run yet".
+- **`sh`** — free on macOS and Linux, means Git Bash on Windows. If you don't have it, point the
+  `command` line in the five agent files at `audit-subagent.ps1` instead. That's the one sanctioned
+  edit to a machinery file, because it's platform-specific rather than project-specific.
+
+Check the log has content after your first `/orchestrate` run.
+
+**What it deliberately isn't:** a `Stop` hook. Nic's loop has one because his runs unattended at
+22:00 and something has to stop a runaway. Every skill here is a foreground invocation, the
+escalation ladder already caps at three attempts per task, and the task list is finite — so a hook
+that blocks stopping would be a foot-gun in a session you're sitting in front of.
+
 ## Working in someone else's repo
 
 `/loop-init` defaults to a zero committed footprint for any repo with other contributors: loop paths
@@ -175,4 +246,57 @@ policy, and won't commit at all if you tell it not to.
   what would waste their time.
 - **It doesn't run unattended.** Every skill is a foreground invocation. Nothing is scheduled.
 - **It doesn't skip stages to go faster.** Four spawns per task is the design, not an oversight —
-  the cost is in what each spawn carries, which is why lessons are sliced.
+  the cost is in what each spawn carries, which is why lessons are sliced and why every agent has a
+  length budget on what it hands the next one.
+
+## The security audit
+
+`security-auditor` (Opus, read-only) runs once at the close of a unit, over everything that unit
+changed. It is a built-in step in `/orchestrate`, not a profile gate — an earlier version of this
+template made it a gate and it silently never ran, because nothing filled the section in.
+
+**Why it isn't just more review:** `code-reviewer` sees one task's diff at a time, and the defects
+worth catching usually aren't in one diff. A route added in T-001, an authorization check relaxed in
+T-003, a field added to a response in T-005 — each diff individually reasonable, the combination
+exposing something. Nothing else in the loop ever looks at the whole change set.
+
+Three design decisions keep it from becoming noise, which is how this kind of stage normally dies:
+
+- **Unit-scoped, not repo-scoped.** A whole-repo audit on a codebase with history re-reports the
+  same pre-existing findings every milestone until nobody reads it. It reads widely — following a
+  changed function to its callers, checking what a new route sits behind — but reports only on what
+  this unit introduced. Pre-existing issues go in a separate labelled list.
+- **Every finding names a path to harm.** "Input validation is missing" is a category nobody can
+  act on. The entry point, the path from input to impact, who can reach it, and what they get — or
+  it isn't a finding.
+- **"No findings" is the expected outcome.** Most units don't introduce a security defect. A stage
+  that always produces findings is manufacturing them, and it gets ignored exactly when it finally
+  has something real.
+
+It never fixes anything. Findings go to you with severity, because you own integration — anything
+worth acting on becomes a new unit via `/loop-plan` or a tracker item. If your project has its own
+SAST or dependency scan, `/loop-init` records it and both run: a scanner knows published
+vulnerabilities and pattern signatures, the auditor knows what the unit was trying to do.
+
+## Verifying against the running app
+
+`verifier` is the one stage that tests the application rather than the tests. After `test-runner`
+passes, it starts the app, exercises the task's acceptance criteria, and reports what it observed —
+the actual status code, body, log line or output.
+
+**Why it's worth a fifth spawn:** a green suite is evidence about the tests. It cannot see an
+endpoint that was never registered, a migration that didn't run, config bound to the wrong key, or a
+200 returned over a swallowed exception. Those reach a user without ever reaching a red test.
+
+It's conditional on both counts, so it costs nothing where it has nothing to say:
+
+- `/loop-init` records `applicable: no` with a reason for a library or a CLI with no process to
+  start, and the stage never runs.
+- `/loop-plan` marks each acceptance criterion `[runtime]` if it's observable against the running
+  app. A refactor, an internal invariant or a docs task has none, and the stage is skipped.
+
+`NOT VERIFIED` enters the same escalation ladder as a test failure. `BLOCKED` — the app wouldn't
+start — does not, for the same reason a stopped Docker daemon doesn't burn a retry.
+
+Where a project has **no test suite**, this becomes the primary gate rather than an optional one.
+That's the honest answer to a green run that executed zero assertions.

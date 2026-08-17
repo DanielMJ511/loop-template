@@ -1,9 +1,10 @@
 ---
 name: retro
 description: Extract recurring friction from loop/STATE.md and the unit's own commits into actionable, audience-tagged constraints in loop/LESSONS.md, and retire lessons that have since become permanent skill text or proved inapplicable. Use after an /orchestrate run completes, or when the user says "/retro".
+model: opus
 ---
 
-## 1. Read both records of the unit
+## 1. Read every record of the unit
 
 Read `loop/STATE.md` from the most recent `boundary` marker onward — the entries `/loop-plan` and `/orchestrate` wrote for the unit just completed. Note the work item's reference.
 
@@ -12,6 +13,24 @@ Then read what the unit actually did, not only what its agents said they did. Fi
 `loop/STATE.md` is agents reporting on themselves. A report of what an agent was about to do is not evidence it happened, and the dangerous half-applied tree is the one that still passes. The commits are the only record that cannot be self-serving.
 
 Where the journal and the commits disagree, that gap is itself a candidate lesson — and say so plainly in the entry.
+
+### The audit log, if it exists
+
+If `loop/AUDIT.log` is present, the `SubagentStop` hook is installed and the harness appended one line as each spawn ended:
+
+```
+<utc timestamp> | <agent> | <task, or "-"> | <verdict token, or "-"> | <agent id>
+```
+
+It is written by the harness rather than by an agent, so it is the one record no agent can shape — and unlike `loop/STATE.md`, which `docs-writer` writes only after a task completes, it captures runs that died mid-task. Read the lines since the unit's boundary and use it for the questions the journal answers unreliably:
+
+- **Does the spawn count match the journal?** `docs-writer` reports respins and escalations from what the orchestrator told it. Three `builder` lines for one task where the entry says "builder only, no respins" is a discrepancy worth a lesson.
+- **Which stage does this unit actually burn its time in?** Counting lines per agent is the cheapest measure of where friction lives, and it points at whether the fix belongs in the packet, the profile, or a lesson.
+- **Which tasks escalated?** An `implementer` line is an escalation, whether or not anything recorded it.
+
+Treat a count from this file as measured; treat a task attribution of `-` as unknown rather than as "no task". The agent names the task in its own summary, so a line can miss it while the spawn was real.
+
+If the file is absent, the hook simply is not installed. Note it once and move on — it is not a finding.
 
 ## 2. Identify recurring friction
 

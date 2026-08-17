@@ -1,6 +1,7 @@
 ---
 name: loop-init
 description: Detect this project's stack, conventions, tracker and git policy, and write loop/PROFILE.md so the loop can run here without any hand-editing. Use once per project when adopting the loop, or when the user says "/loop-init". Also use to re-detect after a project's build or conventions change materially.
+model: opus
 ---
 
 Run in the main session. Detect, propose, write the profile, stop. **Never plan a milestone, write a task packet, or touch application code** — `/loop-plan` does the first two and `builder` does the third.
@@ -76,6 +77,18 @@ Record the outcome in the profile as a first-class fact, never as a blank:
 
 When there is no test suite, tell the user plainly at step 7 that the loop's verification stage will not be load-bearing until one exists, and recommend making a test harness the first task. That is their call, not yours — but they must make it knowingly, because the failure mode is invisible.
 
+## 2b. Detect how to run and observe the app
+
+The profile's Runtime verification section. `verifier` reads it to exercise a task's acceptance criteria against the running application — the loop's only check that isn't a claim about the tests.
+
+**Decide `applicable` first, and be willing to say no.** A library, a pure CLI with no process to start, or anything with nothing to run gets `applicable: no` plus the reason. A recorded "no" is a real answer; a blank section is a stage that quietly never runs.
+
+If it does apply, find and record: the start command; the **readiness signal** (a health endpoint, a port opening, a log line — never a fixed sleep, which is how a verifier reports a false failure on a slow morning); where to reach it; the stop command; any seed or fixture step; where the app's logs go; and how to confirm a running process is actually current code.
+
+Look in this order — `docker-compose.yml` and `Procfile`, the manifest's run/serve/start script, CI's end-to-end or smoke job if there is one, then the README's "getting started" section. A compose file is usually the best source, because it names the ports, the dependencies and the health checks in one place.
+
+**Verify by starting it once.** Bring the app up, confirm the readiness signal actually fires, reach it, then stop it. An unverified start command is close to useless: `verifier` will report `BLOCKED` on every task and the stage will look broken rather than unconfigured. If it can't be started here — a credential you don't have, a service that isn't reachable — record the commands, mark them `(assumed)`, and list it in Open questions.
+
 ## 3. Detect conventions
 
 This is the section that decides whether the loop produces code that looks native or code that looks bolted on. Read real files — pick the two or three most recently-changed non-trivial source files plus their tests.
@@ -121,6 +134,23 @@ Then determine branch policy, whether the loop may commit at all, and the pre-co
 
 **Ask about footprint explicitly, in a shared repo:** should loop files be committed, or stay local? Default to local for any repo with other contributors — teammates seeing unexplained agent config in a PR is a real cost. Local means adding the loop paths to `.git/info/exclude`, which is per-clone and never committed, so the shared `.gitignore` is untouched.
 
+## 5b. Establish the milestone-close gates
+
+`/orchestrate` walks the profile's Milestone-close gates after the last task of a unit. **If you leave that section as template placeholders, it walks a list of placeholders and every gate silently never runs** — and the one people notice missing last is the security review, because nothing fails when it is skipped.
+
+Propose a concrete list. Start from what the project already has, then fill the gaps:
+
+- **Security scanning.** `/orchestrate` always spawns `security-auditor` at the close of a unit, so you do not record that here — it is built in. What you are looking for is the project's own scanner: a SAST or dependency step in CI (`codeql`, `semgrep`, `snyk`, `trivy`, `bandit`, `npm audit`, `dependency-check`), or a documented process. Record the command if one exists. The two are complementary rather than redundant — a scanner knows published vulnerabilities and pattern signatures, the auditor knows what the unit was trying to do — so having one is not a reason to skip the other. If the project has no scanner, record `none` rather than inventing one.
+- **Closing the work item.** From the tracker detected in step 4, if any. Mark it as requiring user confirmation.
+- **Anything the project's own process already requires** at a release or merge boundary — a changelog entry, a version bump, a migration check, a manual smoke test. Read `CONTRIBUTING.md` and the PR template for these rather than inventing them.
+
+Two rules on how you write them, both from the template:
+
+- **A gate is a command or a human action, never a skill.** `/orchestrate` runs these from inside its own invocation; listing `/retro` or `/loop-plan` there asks it to invoke a skill mid-skill. `/retro` is what the user runs after `/orchestrate` returns.
+- **A gate with neither a command nor a named owner is a gate that never runs.** Prefix the user's ones with `USER:` so the distinction survives.
+
+If the user wants no gates at all, record that explicitly — `none — the user closes milestones manually` — rather than leaving placeholders. An empty section and a deliberately empty section look identical six weeks later.
+
 ## 6. Greenfield: write a provisional profile instead
 
 Nothing to detect, so ask for the minimum and mark everything provisional.
@@ -151,6 +181,19 @@ Then write:
 4. `loop/STATE.md` — a header line and an adoption entry (date, mode, detected stack, work-item source).
 5. `loop/tasks/README.md` — copy `.claude/loop-templates/tasks-README.md`.
 6. If footprint is local: append `loop/` and `.claude/` to `.git/info/exclude`, then confirm with `git status --short` that the repo reads clean. Verify with `git check-ignore -v loop/PLAN.md` that the exclusion resolves to `.git/info/exclude` and not to a committed `.gitignore`.
+
+   If footprint is **committed**, exclude `loop/AUDIT.log` specifically. It is machine-local run telemetry that changes on every spawn; committing it produces conflict-prone churn in every PR and tells a teammate nothing.
+
+## 7b. Check the audit hook can run
+
+Nothing to install. Each loop agent declares the hook in its own frontmatter as a `Stop` hook, which Claude Code converts to `SubagentStop` and unregisters when the agent finishes. It appends one line to `loop/AUDIT.log` per spawn, giving `/retro` a record no agent can shape.
+
+Two things to confirm here, because both fail silently:
+
+- **`jq` or `python3` must be on PATH** — `command -v jq python3`. The script reads the hook payload with one of them and exits quietly with neither, producing an empty log that looks exactly like "nothing has run yet". If neither is present, say so now and tell the user the loop still works, just without the audit trail.
+- **`sh` must resolve.** On macOS and Linux this is free. On Windows it means Git Bash. If it isn't there, point the hook at the PowerShell twin instead — edit the `command` line in each of the five agent files to `powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.ps1" -AgentName <agent>`. This is the one sanctioned edit to a machinery file, because it is platform-specific rather than project-specific.
+
+Then tell the user to check `loop/AUDIT.log` has content after their first `/orchestrate` run. A wrong interpreter path fails silently and looks identical to an empty log.
 
 ## 8. Stop
 

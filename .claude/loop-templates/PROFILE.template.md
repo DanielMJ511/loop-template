@@ -47,6 +47,26 @@ full suite once before any commit.
 
 ---
 
+## Runtime verification
+
+How `verifier` exercises a task's acceptance criteria against the running application. A green suite
+is evidence about the tests; this is the only stage that observes the app itself.
+
+Set `applicable: no` and leave the rest blank for a library, a pure CLI with no process to start, or
+anything with nothing to run — `/orchestrate` then skips the stage instead of inventing a way to
+verify. Say *why*, so a later reader can tell a considered "no" from an unfilled field.
+
+- **applicable**: `<yes | no>` — `<if no, why>`
+- **Start**: `<command that brings the app up>`
+- **Readiness**: `<how to know it is up — a health endpoint, a port, a log line. Never a fixed sleep.>`
+- **Reach it at**: `<base URL, port, socket, or how to invoke the CLI>`
+- **Stop**: `<command to shut it down and clean up>`
+- **Fixtures / seed**: `<command, or "none">`
+- **Logs**: `<where the app's output goes — a file, stdout, a container log command>`
+- **Confirm it is running current code**: `<how — a build stamp, a version endpoint, or "restart it">`
+
+---
+
 ## Conventions
 
 The rules that apply to every change regardless of what a task packet says. `builder` applies
@@ -140,9 +160,24 @@ How the loop learns what to build. `/loop-plan` reads `source` and ignores the o
 Steps that run once per milestone after the last task, in order. Each one either has a command or is
 explicitly the user's to perform — a gate with neither is a gate that silently never runs.
 
-1. `<e.g. security review — run the security-review skill>`
-2. `<e.g. /retro>`
-3. `<e.g. close the tracker item, on user confirmation>`
+**A gate is a command or a human action, never a skill.** `/orchestrate` walks this list from inside
+its own run; listing `/retro` or `/loop-plan` here asks it to invoke a skill mid-skill, and the two
+sets of instructions then compete. `/retro` is what the user runs *after* `/orchestrate` returns.
+
+Replace every line below — a placeholder left here is a gate that never runs, and the security
+review is the one nobody notices is missing.
+
+1. `<e.g. the project's SAST or dependency scan — command, or "none">`
+2. `<e.g. close the tracker item, on user confirmation>`
+3. `<USER: manual smoke test of the flows this milestone touched>`
+
+`/loop-init` fills this in from what the project already has. `none — the user closes milestones
+manually` is a valid answer; a leftover placeholder is not.
+
+**`security-auditor` is not listed here.** `/orchestrate` spawns it at every unit close as a built-in
+step, so it cannot be lost by an unfilled profile — which is what happened to this gate before it
+was built in. A scanner recorded above runs *as well*: it knows published vulnerabilities and
+pattern signatures, the auditor knows what the unit was trying to do.
 
 ---
 

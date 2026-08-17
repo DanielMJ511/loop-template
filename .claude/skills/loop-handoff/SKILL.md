@@ -1,12 +1,13 @@
 ---
 name: loop-handoff
 description: Overwrite loop/HANDOFF.md with a checkpoint of the in-flight task, stage and next action, so /orchestrate can resume instead of restarting. Use when ending a session mid-unit, or when the user says "/loop-handoff". Distinct from a general-purpose conversation summary — this is a loop/-specific checkpoint.
+model: sonnet
 ---
 
 Gather the current loop state:
 
 - Which task (`T-00X`) is in flight, and which stage it's at (`builder`, `test-runner`, `code-reviewer`, `docs-writer`, or blocked/escalated).
-- The failure counter for that task, if any respins have happened — without it, a resumed session restarts the escalation ladder from zero and can burn two more attempts on a task already at its limit.
+- The failure counter for that task, if any respins have happened — without it, a resumed session restarts the escalation ladder from zero and can burn two more attempts on a task already at its limit. **Read it from the packet's `Status:` line** (`/orchestrate` persists it there on every change) rather than from the transcript, and copy that line verbatim. If the transcript and the packet disagree, the packet is the record that survived.
 - The last test result (pass/fail, which files or suites).
 - `git status --short` output.
 - One-line description of the next action when work resumes.

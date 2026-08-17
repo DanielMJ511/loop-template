@@ -138,9 +138,27 @@ Only if the profile's Git section permits the loop to commit. If it says the use
 
 If `loop/PLAN.md` still has unchecked tasks, return to step 2.
 
-If all tasks are checked off, stop and tell the user the unit's implementation is complete. Then walk the profile's Milestone-close gates in order, doing the ones that have commands and prompting the user for the ones that are theirs.
+If any task is marked `- [!]`, the unit is not complete. Report every blocked task together with its failure history and stop here — do not walk the verification list or the close gates against a unit that is missing work, and do not present it as finished.
 
-Once the user reports the outcome of any gate that was theirs, append a close entry to `loop/STATE.md` recording it (unit, item ref, findings or "no findings"). Do this even though the loop has ended: no `docs-writer` runs after the last task, so without this step the journal's final entry reads "remaining steps are the user's" forever and the gate looks skipped.
+If all tasks are checked off, tell the user the unit's implementation is complete. Then walk `loop/PLAN.md`'s own `## Verification` list, **before** the profile's close gates.
+
+### Walk the unit's verification list
+
+These are the observable scenarios `/loop-plan` wrote down as the definition of done for the whole unit. They are what makes the unit falsifiable rather than merely finished, and nothing has checked them yet: `docs-writer` checks off tasks, and the profile's close gates are a different list entirely.
+
+For each item, in order:
+
+- **Observable by running the software** → spawn `qa` with it, the same way step 4 does.
+- **Covered by a test** → spawn `test-runner` scoped to it.
+- **The user's to confirm** → say so plainly and ask. Some scenarios need a human's eyes and always will.
+
+Then check the item off (`- [ ]` → `- [x]`), or leave it unchecked with a one-line note on why it could not be confirmed. **An unchecked verification item at the end of a unit is a result, not an oversight** — it says exactly what this unit did not prove, which is the most useful thing the plan file can carry into the next one.
+
+Do not mark an item verified on the strength of the tasks having passed. Every task passing is what the item is testing *for*; treating it as proof makes the whole list a restatement of "the work is done".
+
+Then walk the profile's Milestone-close gates in order, doing the ones that have commands and prompting the user for the ones that are theirs.
+
+Once the user reports the outcome of any gate that was theirs, append a close entry to `loop/STATE.md` recording it: unit, item ref, **each verification item with its outcome, including the ones left unconfirmed and why**, and the gate findings or "no findings". Do this even though the loop has ended: no `docs-writer` runs after the last task, so without this step the journal's final entry reads "remaining steps are the user's" forever and both the gates and the verification walk look skipped.
 
 Any deferred work from this unit becomes a follow-up item here, under the rules below.
 

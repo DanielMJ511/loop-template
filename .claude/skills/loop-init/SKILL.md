@@ -80,6 +80,24 @@ Record the outcome in the profile as a first-class fact, never as a blank:
 
 When there is no test suite, tell the user plainly at step 7 that the loop's verification stage will not be load-bearing until one exists, and recommend making a test harness the first task. That is their call, not yours — but they must make it knowingly, because the failure mode is invisible.
 
+### Detect the runtime surface
+
+`qa` verifies acceptance criteria by running the thing, and it reads this section rather than
+improvising. Find: the start command, the signal that it is actually up, how a check reaches it,
+how to shut it down, any end-to-end or UI harness, and where errors surface.
+
+**Start it once and record what you observed**, the same standard as every other command here. The
+"how to tell it is up" line is the one most often wrong when guessed — an agent that assumes a
+process is ready reports every later check as a behavioural failure.
+
+While it is running, **record the errors already present** in the console or log. Without that
+baseline, `qa` reports a pre-existing warning as a regression this task caused, and a builder is
+sent to fix code it never touched.
+
+**`n/a` is a correct answer.** A library, a parser, or a pure-function package has no runtime
+surface; record that plainly and `qa` will stop instead of inventing a harness. Do not manufacture
+one to fill the field in.
+
 ## 3. Detect conventions
 
 This is the section that decides whether the loop produces code that looks native or code that looks bolted on. Read real files — pick the two or three most recently-changed non-trivial source files plus their tests.

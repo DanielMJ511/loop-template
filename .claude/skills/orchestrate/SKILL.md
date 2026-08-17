@@ -81,10 +81,18 @@ Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile
 
 **A green gate that cannot go red is not a pass.** Check the profile's test-gate status before trusting this step:
 
-- If the profile records **no test suite**, this step proves nothing and you must not treat it as verification. Several toolchains exit 0 on an empty test run without a warning, so the loop would report every task as passing while executing zero assertions. Substitute the strongest gate the project actually has, in this order: the build and type-check commands from the profile; the lint command; and the packet's own acceptance criteria, checked by running the thing and observing the stated outcome. Say explicitly in the `loop/STATE.md` entry which gate was used, so the journal never implies tests passed when none exist.
+- If the profile records **no test suite**, this step proves nothing and you must not treat it as verification. Several toolchains exit 0 on an empty test run without a warning, so the loop would report every task as passing while executing zero assertions. Substitute the strongest gate the project actually has, in this order: the build and type-check commands from the profile; the lint command; and **`qa`, spawned on the packet's acceptance criteria** — that last one is a stage with an owner, not something for you to do in this session. Say explicitly in the `loop/STATE.md` entry which gate was used, so the journal never implies tests passed when none exist.
 - If `test-runner` reports **zero tests executed** when the profile says a suite exists, that is a failure, not a pass — a test selection filter that matches nothing, or a suite that failed to load. Treat it as a step-4 failure and respin.
 
 When a project has no test suite, say so once at the start of the run and recommend that a test harness become its own task. Do not silently proceed as if the gate were real, and do not refuse to run — a project without tests is still worth building in, as long as nobody is misled about what was verified.
+
+### Behavioural verification
+
+**Spawn `qa` when the task's packet has an acceptance criterion that can be observed by running the software** — a request that should return something, a screen that should render, a command that should print. Give it the criteria, the profile's Runtime surface and Prerequisites, and the absolute project path.
+
+Skip it when the packet has no such criterion. A pure refactor, an internal rename, a docs change — spawning `qa` there spends a stage to confirm that nothing changed, which the test suite already covers. When the profile records no runtime surface at all, `qa` never runs; the substitution list above ends at lint.
+
+A `qa` **FAIL** is a step-4 failure: it counts toward the same escalation ladder, with the same respin and escalation rules. **PASS WITH GAPS** is not a failure — carry the listed gaps into the `loop/STATE.md` entry at step 6, so what went unproven is written down rather than remembered.
 
 ## 5. Review
 

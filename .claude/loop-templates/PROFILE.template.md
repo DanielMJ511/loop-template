@@ -47,6 +47,23 @@ full suite once before any commit.
 
 ---
 
+## Runtime surface
+
+How to run this project and watch it behave. `qa` reads this and nothing else — it does not
+improvise a start command or guess a port. `n/a` is a correct and common answer: a library, a
+parser or a pure-function package has no runtime surface, and `qa` stops rather than inventing one.
+
+- Start it: `<cmd, or "n/a — no runtime surface">`
+- How to tell it is up: `<the observable signal — a log line, a health endpoint, a prompt, a window>`
+- How to reach it: `<URL and port, CLI invocation, socket — whatever a check goes through>`
+- Shut it down: `<cmd or signal, if anything beyond killing the process is needed>`
+- End-to-end / UI harness: `<cmd, or "none">`
+- Where errors surface: `<browser console, stderr, a log file path, a status endpoint>`
+- Errors already present before any loop work: `<list, or "none observed on <date>">` — so a
+  pre-existing error is not reported as a regression this task caused.
+
+---
+
 ## Conventions
 
 The rules that apply to every change regardless of what a task packet says. `builder` applies

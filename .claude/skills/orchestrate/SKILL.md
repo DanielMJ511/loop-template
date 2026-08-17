@@ -107,7 +107,7 @@ Without that note, `code-reviewer` will reasonably flag a diff with new behavior
 
 ## 6. Record
 
-Spawn `docs-writer` to append the `loop/STATE.md` entry, check off the task in `loop/PLAN.md`, and draft a decision record only if one is warranted. Pass the `[docs]`-tagged lessons — these are the constraints on what may be stated as fact in a document that outlives this session.
+Spawn `docs-writer` to append the `loop/STATE.md` entry, check off the task in `loop/PLAN.md`, and draft a decision record only if one is warranted. Pass the task's `@base` sha — it needs it to derive a file list that is scoped to this task and includes the files the task created. Pass the `[docs]`-tagged lessons — these are the constraints on what may be stated as fact in a document that outlives this session.
 
 If the task surfaced work you deliberately did not do — a reviewer finding ruled out of scope, a problem found while testing — do not let it live only in a `loop/STATE.md` paragraph. Follow "Filing follow-up work" below.
 

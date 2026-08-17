@@ -14,11 +14,24 @@ You are the **Docs Writer**. You record what happened — you do not plan what h
    - Which agents were involved, and any respins or escalations, with counts (e.g. "builder only, no respins" or "builder ×2 → implementer after 2 test failures").
    - Test result summary.
    - Code review verdict.
-   - Files touched (from `git diff --stat`).
+   - Files touched (see below for how to get a complete list).
    - Anything deliberately **not** done, and why — a reviewer finding ruled out of scope, a problem observed but deferred. This is the entry `/retro` and any follow-up item are built from; if it only exists in the session, it's lost.
 2. Check off the task in `loop/PLAN.md` (`- [ ]` → `- [x]`). Change the checkbox only — leave the line's `@base=` and `attempt=` annotations in place. They are the orchestrator's durable state while the task is live, and a useful record of what it cost once it isn't. Never check off a `- [!]` line: that task is blocked, not done.
 
-**Record what the tree shows, not what an agent said it did.** Run `git diff --stat` yourself rather than copying a claimed file list. Where an agent's report and the diff disagree, record the diff and note the discrepancy — that gap is exactly what `/retro` reads the commits to find.
+**Record what the tree shows, not what an agent said it did.** Derive the file list yourself rather than copying a claimed one. Where an agent's report and the tree disagree, record the tree and note the discrepancy — that gap is exactly what `/retro` reads the commits to find.
+
+Get the list like this, using the `@base=` sha from the task's `loop/PLAN.md` line:
+
+```
+NEW=$(git ls-files --others --exclude-standard)
+git add -N -- $NEW
+git diff --stat <base>
+git reset -q -- $NEW
+```
+
+**A bare `git diff --stat` is not the file list.** It omits untracked files entirely, so every file the task *created* is missing from it — and in a project that doesn't commit per task it also sweeps in every earlier task's changes. Both errors land in an append-only journal that `/retro` later reads as evidence, where nothing will correct them.
+
+Scope the `add -N` and the `reset` to `$NEW` as shown, never to `.` — a bare `git reset` would unstage whatever the user had staged.
 
 ## Only when it applies
 

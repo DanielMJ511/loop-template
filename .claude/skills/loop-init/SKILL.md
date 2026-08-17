@@ -20,17 +20,43 @@ If the repo has history but only scaffolding (a generated starter with no real c
 
 ## 2. Detect commands and prerequisites
 
-Read the build manifest and the CI config together. CI is the higher-trust source: it records the commands that actually have to pass, while a README drifts.
+Read the build manifest and the CI config together. They are authoritative for **different things**, and conflating them produces a profile that's wrong in a way nobody notices:
 
-Look for, in this order: the build manifest for the stack (`package.json`, `pom.xml`, `build.gradle`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Gemfile`, `*.csproj`, `mix.exs`), then `.github/workflows/`, `.gitlab-ci.yml`, `Makefile`, `justfile`, `Taskfile.yml`, then the README's build section.
+- **The manifest is authoritative for the local invocation** — the command an agent should actually run. Record this one.
+- **CI is authoritative for which commands must pass, and for what the environment needs.** Its `services:`, `env:` and setup steps are the best available list of prerequisites, usually better than the README's.
+- **CI-only flags are not part of the command.** `--coverage`, a verbose or JUnit-XML reporter, `--batch-mode`, `--ci`, `--no-watch`, a fail-fast threshold: these exist for a build server. Do not fold them into the recorded command. Note them in the Evidence column if they matter, and be aware that a reporter flag changes the output shape `test-runner` parses — which is a reason to *avoid* it locally, not to adopt it.
+- **A README that disagrees with the manifest is stale.** That's the drift worth reporting.
+
+If CI runs a command the manifest doesn't expose at all, that's a real finding: record the CI form and note that there is no local equivalent.
+
+Look for the build manifest for the stack (`package.json`, `pom.xml`, `build.gradle`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Gemfile`, `*.csproj`, `mix.exs`), then `.github/workflows/`, `.gitlab-ci.yml`, `Makefile`, `justfile`, `Taskfile.yml`, then the README's build section.
+
+**Find all of them, not the first one.** A repo with a `package.json` for tooling and a `pom.xml` for the application is not a JavaScript project, and picking whichever manifest you found first is a mistake you won't notice until a builder runs the wrong test command. When more than one manifest exists, work out which one builds the code the loop will be changing — CI usually settles it, and if it doesn't, ask. If the project genuinely has two live stacks, record commands for both and say which is the default.
 
 Determine: build, full test suite, **single test file**, **single test case**, lint, type check, run-locally. The two single-test forms matter more than they look — without them, every `test-runner` spawn runs the entire suite, and on a slow suite that is where the loop's time goes.
 
+**Most manifests do not expose a single-test script.** Outside a few build tools, you will find a `test` script and nothing narrower. Do not leave those rows blank, and never fill them with the full-suite command — a profile whose "single test" command runs everything is worse than an empty row, because it looks answered.
+
+Derive them from the **test runner** instead, which you identify from the manifest's dev dependencies or the test files' imports. Then **verify by running** — an unverified single-test invocation is the single most likely thing in this profile to be wrong, because the syntax varies by runner and by version:
+
+- Identify the runner (from `devDependencies`, a test config file, or what the test files import).
+- Find its file-selection and name-filter flags. Most runners have both: one to run a path, one to match a test name.
+- Run each form once against a real test file from this repo and confirm it executes fewer tests than the full suite. Record the exact invocation that worked, not the one the docs suggest.
+- If a package-manager script wrapper needs an argument separator (`npm test -- <args>`), include it in the recorded command — omitting it silently passes the flags to the wrong process.
+
 **Prerequisites are as important as the commands.** Find what must be true for the suite to pass: a container runtime, a running service, an env file, a seeded database, a compiled native dependency, a specific runtime version. For each, record the check command *and the symptom when it's missing* — a missing prerequisite produces a failure that reads like a code bug, and `test-runner` needs to distinguish them without guessing.
 
-Verify by running: the build command, the lint command, and a single-test invocation. Do not run the full suite — it can be slow, and the single-test run already proves the invocation shape.
+**Find the install step before verifying anything.** On a fresh clone nothing is installed, so every command you try fails with a "command not found" for a tool that is in fact configured correctly. Look for the dependency-install command (from CI's setup steps, which always have one) and record it as a prerequisite. Run it, or ask the user to, before attempting verification. Recording "lint is broken" when the truth is "dependencies aren't installed" writes a confidently wrong profile, and every later agent inherits it.
 
-If a command fails, that is a finding, not a blocker. Record it in Open questions with the actual error. A project whose documented build doesn't work is exactly what the loop needs to know before a builder blames itself.
+Then verify by running: the build command, the lint command, and each single-test invocation. Do not run the full suite — it can be slow, and the single-test run already proves the invocation shape.
+
+**When a command fails, classify it before recording it.** These are three different facts and only the last is a project defect:
+
+- **Not installed** — a "command not found" / "not recognized" for a tool the manifest declares. Not a finding. Install and retry.
+- **Environment missing** — it ran but couldn't reach a database, port, or credential. Not a finding about the code: this is a **prerequisite**, and it belongs in the Prerequisites list with its symptom.
+- **Genuinely broken** — it ran, had what it needed, and failed anyway. This one is a real finding. Record it in Open questions with the actual error, because a project whose documented build doesn't work is exactly what the loop needs to know before a builder blames itself.
+
+Never report a failure without saying which of the three it is. Guessing here is how a prerequisite ends up recorded as a broken build.
 
 ## 3. Detect conventions
 

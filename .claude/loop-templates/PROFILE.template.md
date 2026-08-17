@@ -47,6 +47,26 @@ full suite once before any commit.
 
 ---
 
+## Runtime verification
+
+How `verifier` exercises a task's acceptance criteria against the running application. A green suite
+is evidence about the tests; this is the only stage that observes the app itself.
+
+Set `applicable: no` and leave the rest blank for a library, a pure CLI with no process to start, or
+anything with nothing to run — `/orchestrate` then skips the stage instead of inventing a way to
+verify. Say *why*, so a later reader can tell a considered "no" from an unfilled field.
+
+- **applicable**: `<yes | no>` — `<if no, why>`
+- **Start**: `<command that brings the app up>`
+- **Readiness**: `<how to know it is up — a health endpoint, a port, a log line. Never a fixed sleep.>`
+- **Reach it at**: `<base URL, port, socket, or how to invoke the CLI>`
+- **Stop**: `<command to shut it down and clean up>`
+- **Fixtures / seed**: `<command, or "none">`
+- **Logs**: `<where the app's output goes — a file, stdout, a container log command>`
+- **Confirm it is running current code**: `<how — a build stamp, a version endpoint, or "restart it">`
+
+---
+
 ## Conventions
 
 The rules that apply to every change regardless of what a task packet says. `builder` applies

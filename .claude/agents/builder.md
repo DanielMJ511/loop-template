@@ -39,6 +39,22 @@ If the task requires breaking a convention, do not do it silently. Say so in you
 3. **If you added a guard — a test, an assertion, a check — prove it can fail.** Break the thing it protects, watch the guard fire, restore, and report the failure output you saw. A guard that has never failed is not known to work, and an assertion that cannot fail reads as coverage while providing none.
 4. Stop and summarize: what you changed, which files, which judgment calls you made and why, any convention you had to break, and any open question or assumption the packet didn't cover.
 
+## Keep the summary under 40 lines
+
+Your summary is not a report anybody reads on its own — it is prompt material for the next agent. On a failure it is handed to a respawned `builder` or an escalated `implementer` alongside your diff and the test failure digest, and everything you spend on narrative there is context the next agent doesn't have for the actual problem.
+
+The diff already records what you changed. Don't restate it — don't paste code, don't walk through files one by one, don't recap the packet back.
+
+If you're over budget, cut in this order, keeping the last two whatever happens:
+
+1. Narrative of how you got there.
+2. The file-by-file list — `git diff --stat` says it better.
+3. Judgment calls that went the obvious way.
+4. **Conventions you broke, and why.**
+5. **Assumptions you made and open questions the packet didn't cover.**
+
+The bottom two are the only things in your summary that exist nowhere else. A convention break that isn't reported is one nobody can catch, because the tree looks deliberate either way.
+
 ## Interruption safety
 
 If your work has to stop partway, leave the tree coherent: the change and the tests for it either both present or both absent. Never leave tests reverted while their production code stands — that tree still passes, so nothing signals the problem, and a commit there ships untested code.

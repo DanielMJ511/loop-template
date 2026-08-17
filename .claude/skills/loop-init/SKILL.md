@@ -77,6 +77,18 @@ Record the outcome in the profile as a first-class fact, never as a blank:
 
 When there is no test suite, tell the user plainly at step 7 that the loop's verification stage will not be load-bearing until one exists, and recommend making a test harness the first task. That is their call, not yours — but they must make it knowingly, because the failure mode is invisible.
 
+## 2b. Detect how to run and observe the app
+
+The profile's Runtime verification section. `verifier` reads it to exercise a task's acceptance criteria against the running application — the loop's only check that isn't a claim about the tests.
+
+**Decide `applicable` first, and be willing to say no.** A library, a pure CLI with no process to start, or anything with nothing to run gets `applicable: no` plus the reason. A recorded "no" is a real answer; a blank section is a stage that quietly never runs.
+
+If it does apply, find and record: the start command; the **readiness signal** (a health endpoint, a port opening, a log line — never a fixed sleep, which is how a verifier reports a false failure on a slow morning); where to reach it; the stop command; any seed or fixture step; where the app's logs go; and how to confirm a running process is actually current code.
+
+Look in this order — `docker-compose.yml` and `Procfile`, the manifest's run/serve/start script, CI's end-to-end or smoke job if there is one, then the README's "getting started" section. A compose file is usually the best source, because it names the ports, the dependencies and the health checks in one place.
+
+**Verify by starting it once.** Bring the app up, confirm the readiness signal actually fires, reach it, then stop it. An unverified start command is close to useless: `verifier` will report `BLOCKED` on every task and the stage will look broken rather than unconfigured. If it can't be started here — a credential you don't have, a service that isn't reachable — record the commands, mark them `(assumed)`, and list it in Open questions.
+
 ## 3. Detect conventions
 
 This is the section that decides whether the loop produces code that looks native or code that looks bolted on. Read real files — pick the two or three most recently-changed non-trivial source files plus their tests.

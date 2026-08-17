@@ -14,7 +14,7 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-16 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
+17 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
 `settings.json`, so copying the template never touches your own settings. The two files in `hooks/`
 are inert scripts until you opt in during `/loop-init` — see [The audit hook](#the-audit-hook).
 
@@ -41,7 +41,7 @@ Note the `/.` and the `*`. Without them, `cp -r src/.claude .` copies the folder
 existing one and you get `.claude/.claude` — broken, and silently so.
 
 **Watch for name collisions.** If the project already defines an agent named `builder`,
-`code-reviewer`, `docs-writer`, `implementer`, `test-runner` or `teacher`, or a skill named
+`code-reviewer`, `docs-writer`, `implementer`, `test-runner`, `verifier` or `teacher`, or a skill named
 `orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or skip those rather than
 overwriting a project's own tuned agents with these generic ones.
 
@@ -78,7 +78,7 @@ Two things matter more here than anywhere else:
 
 ```
 /loop-plan       # decompose the work, grill it, record decisions — writes no code
-/orchestrate     # drive each task through build → test → review → record
+/orchestrate     # drive each task through build → test → verify → review → record
 /retro           # bank recurring friction as constraints; retire what no longer applies
 /loop-handoff    # checkpoint mid-session so /orchestrate resumes instead of restarting
 ```
@@ -171,7 +171,7 @@ model is, and you never toggle `/model` by hand.
 | `/loop-init`, `/loop-plan`, `/retro` | `opus` | Their output is durable and nothing downstream re-checks it |
 | `/orchestrate`, `/loop-handoff` | `sonnet` | Routing and transcription against heavily-scripted rules |
 | `implementer` | `opus` | The escalation tier exists to diagnose, not to retry harder |
-| `builder`, `code-reviewer`, `docs-writer` | `sonnet` | The standard tier |
+| `builder`, `code-reviewer`, `docs-writer`, `verifier` | `sonnet` | The standard tier |
 | `test-runner` | `haiku` | High-output, low-reasoning: run the suite, digest the log |
 
 The rule is **durability, not difficulty**. `/loop-plan` writes packets that no later stage
@@ -246,4 +246,28 @@ policy, and won't commit at all if you tell it not to.
   what would waste their time.
 - **It doesn't run unattended.** Every skill is a foreground invocation. Nothing is scheduled.
 - **It doesn't skip stages to go faster.** Four spawns per task is the design, not an oversight —
-  the cost is in what each spawn carries, which is why lessons are sliced.
+  the cost is in what each spawn carries, which is why lessons are sliced and why every agent has a
+  length budget on what it hands the next one.
+
+## Verifying against the running app
+
+`verifier` is the one stage that tests the application rather than the tests. After `test-runner`
+passes, it starts the app, exercises the task's acceptance criteria, and reports what it observed —
+the actual status code, body, log line or output.
+
+**Why it's worth a fifth spawn:** a green suite is evidence about the tests. It cannot see an
+endpoint that was never registered, a migration that didn't run, config bound to the wrong key, or a
+200 returned over a swallowed exception. Those reach a user without ever reaching a red test.
+
+It's conditional on both counts, so it costs nothing where it has nothing to say:
+
+- `/loop-init` records `applicable: no` with a reason for a library or a CLI with no process to
+  start, and the stage never runs.
+- `/loop-plan` marks each acceptance criterion `[runtime]` if it's observable against the running
+  app. A refactor, an internal invariant or a docs task has none, and the stage is skipped.
+
+`NOT VERIFIED` enters the same escalation ladder as a test failure. `BLOCKED` — the app wouldn't
+start — does not, for the same reason a stopped Docker daemon doesn't burn a retry.
+
+Where a project has **no test suite**, this becomes the primary gate rather than an optional one.
+That's the honest answer to a green run that executed zero assertions.

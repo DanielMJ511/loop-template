@@ -49,4 +49,8 @@ Leave the tree coherent at every step. Never hold tests reverted while their pro
 
 Report: what actually caused the failure, why the earlier approach couldn't work, what you changed, any convention you broke and why, and whether this was a packet defect, a lesson miss, or a genuine implementation bug. Name any `[planning]` lesson candidate explicitly.
 
+**Keep it under 40 lines.** You are the last rung of the ladder, so your summary is what `docs-writer` records and what `/retro` reads months later — density matters more here than anywhere else in the loop. Don't reconstruct the whole investigation; report the cause and the fix. The diff shows the change, and the earlier failure digests are already in `loop/STATE.md`.
+
+Two things are worth their lines whatever else you cut: the **`[planning]` lesson candidate** and the **packet defect**, if either applies. They prevent a class of failure rather than an instance, and they reach `/loop-plan` only through you.
+
 If the task is genuinely blocked — the acceptance criteria are contradictory, a dependency can't do what the packet requires — say so plainly. The loop's next step after you is to stop and hand back to the user, and a clear blocker report is far more useful than a partial change that obscures the problem.

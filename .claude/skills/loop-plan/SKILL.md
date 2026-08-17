@@ -91,7 +91,10 @@ Unit: <work item ref>   Status: pending
 <what to build>
 
 ## Acceptance criteria
-<observable conditions, scoped to this task>
+<observable conditions, scoped to this task. Mark each `[runtime]` if it can be
+observed against the running app — a request, a command, a rendered output, a log
+line. /orchestrate spawns `verifier` for the runtime ones. Unmarked criteria are
+checked by the suite and by review.>
 
 ## Relevant conventions
 <the profile rules that apply, decision records to read, domain terms in play>

@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Drive one pass of the task loop, spawning builder, test-runner, code-reviewer and docs-writer for each task in loop/PLAN.md until the tasks are exhausted or a task gets stuck. Use when the user wants to implement the next planned task(s), or says "/orchestrate".
+description: Drive one pass of the task loop, spawning builder, test-runner, verifier, code-reviewer and docs-writer for each task in loop/PLAN.md until the tasks are exhausted or a task gets stuck. Use when the user wants to implement the next planned task(s), or says "/orchestrate".
 model: sonnet
 ---
 
@@ -46,7 +46,7 @@ Spawn `builder` with: the task packet, the profile's Commands and Conventions se
 
 Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile's Commands and Prerequisites.
 
-- **Pass** → step 5.
+- **Pass** → step 4b.
 - **Fail** → increment this task's failure counter and persist it (below):
   - **1st failure**: respawn `builder` with the packet plus `test-runner`'s failure digest. Return to step 4.
   - **2nd consecutive failure**: escalate to `implementer`, passing the full history — both diffs and both failure digests — plus the same `[builder]` slice. Return to step 4.
@@ -68,10 +68,26 @@ On resume, read the `Status:` line before spawning anything, and continue the la
 
 **A green gate that cannot go red is not a pass.** Check the profile's test-gate status before trusting this step:
 
-- If the profile records **no test suite**, this step proves nothing and you must not treat it as verification. Several toolchains exit 0 on an empty test run without a warning, so the loop would report every task as passing while executing zero assertions. Substitute the strongest gate the project actually has, in this order: the build and type-check commands from the profile; the lint command; and the packet's own acceptance criteria, checked by running the thing and observing the stated outcome. Say explicitly in the `loop/STATE.md` entry which gate was used, so the journal never implies tests passed when none exist.
+- If the profile records **no test suite**, this step proves nothing and you must not treat it as verification. Several toolchains exit 0 on an empty test run without a warning, so the loop would report every task as passing while executing zero assertions. Substitute the strongest gate the project actually has, in this order: **step 4b**, which becomes the primary gate rather than an optional one and should run for every task it possibly can; then the build and type-check commands from the profile; then the lint command. Say explicitly in the `loop/STATE.md` entry which gate was used, so the journal never implies tests passed when none exist.
 - If `test-runner` reports **zero tests executed** when the profile says a suite exists, that is a failure, not a pass — a test selection filter that matches nothing, or a suite that failed to load. Treat it as a step-4 failure and respin.
 
 When a project has no test suite, say so once at the start of the run and recommend that a test harness become its own task. Do not silently proceed as if the gate were real, and do not refuse to run — a project without tests is still worth building in, as long as nobody is misled about what was verified.
+
+## 4b. Verify against the running app
+
+**Conditional.** Skip it — and say you skipped it — unless both hold:
+
+- The profile's Runtime verification section says `applicable: yes`.
+- At least one of the packet's acceptance criteria is observable at runtime. A criterion about an internal invariant, a refactor with no behavioural change, or a docs-only task has nothing to observe.
+
+When both hold, spawn `verifier` with the packet's acceptance criteria, the profile's Runtime verification and Prerequisites sections. It starts the app, exercises each criterion, and reports what it observed.
+
+This is the only stage that tests the application rather than the tests. A green suite cannot see an endpoint that was never registered, a migration that didn't run, config bound to the wrong key, or a 200 returned over a swallowed exception — those reach a user without ever reaching a red test.
+
+- **VERIFIED** → step 5.
+- **NOT VERIFIED** → treat exactly as a step 4 test failure: same counter, same ladder, respawn with the observation. A criterion the app doesn't meet is a defect regardless of what the suite says.
+- **BLOCKED** (app wouldn't start, prerequisite missing) → **not a test failure.** Same rule as step 4: fix the environment or tell the user, and do not count it against the task's counter.
+- **A criterion `verifier` could not exercise is not verified.** Decide explicitly: accept it with the gap recorded in the `loop/STATE.md` entry, or fix what blocked it. Do not let it pass silently as though it had been checked.
 
 ## 5. Review
 

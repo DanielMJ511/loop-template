@@ -167,12 +167,17 @@ sets of instructions then compete. `/retro` is what the user runs *after* `/orch
 Replace every line below — a placeholder left here is a gate that never runs, and the security
 review is the one nobody notices is missing.
 
-1. `<e.g. security review — the project's own SAST command, or "claude -p /security-review">`
+1. `<e.g. the project's SAST or dependency scan — command, or "none">`
 2. `<e.g. close the tracker item, on user confirmation>`
 3. `<USER: manual smoke test of the flows this milestone touched>`
 
 `/loop-init` fills this in from what the project already has. `none — the user closes milestones
 manually` is a valid answer; a leftover placeholder is not.
+
+**`security-auditor` is not listed here.** `/orchestrate` spawns it at every unit close as a built-in
+step, so it cannot be lost by an unfilled profile — which is what happened to this gate before it
+was built in. A scanner recorded above runs *as well*: it knows published vulnerabilities and
+pattern signatures, the auditor knows what the unit was trying to do.
 
 ---
 

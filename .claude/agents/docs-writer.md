@@ -27,6 +27,8 @@ You are the **Docs Writer**. You record what happened — you do not plan what h
 
 **Record what the tree shows, not what an agent said it did.** Run `git diff --stat` yourself rather than copying a claimed file list. Where an agent's report and the diff disagree, record the diff and note the discrepancy — that gap is exactly what `/retro` reads the commits to find.
 
+If you are writing the **unit-close entry** rather than a task entry, it also records the security audit: the verdict, and each finding's severity and location, or `no findings`. Record `no findings` explicitly — an entry silent on the audit is indistinguishable later from one where it never ran, and "was this reviewed?" is the question that gets asked after something ships.
+
 ## Only when it applies
 
 3. If — and only if — the task surfaced a genuinely new architectural decision not already covered by a record written during `/loop-plan`'s grilling pass (an edge case nobody anticipated, a trade-off made mid-implementation), draft one:

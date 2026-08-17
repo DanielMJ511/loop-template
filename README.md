@@ -14,9 +14,9 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-17 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
-`settings.json`, so copying the template never touches your own settings. The two files in `hooks/`
-are inert scripts until you opt in during `/loop-init` — see [The audit hook](#the-audit-hook).
+18 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
+`settings.json`, so copying the template never touches your own settings — including the two scripts
+in `hooks/`, which the agents register themselves. See [The audit hook](#the-audit-hook).
 
 **If the project has no `.claude/` folder yet** — copy the whole folder in:
 
@@ -41,7 +41,7 @@ Note the `/.` and the `*`. Without them, `cp -r src/.claude .` copies the folder
 existing one and you get `.claude/.claude` — broken, and silently so.
 
 **Watch for name collisions.** If the project already defines an agent named `builder`,
-`code-reviewer`, `docs-writer`, `implementer`, `test-runner`, `verifier` or `teacher`, or a skill named
+`code-reviewer`, `docs-writer`, `implementer`, `test-runner`, `verifier`, `security-auditor` or `teacher`, or a skill named
 `orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or skip those rather than
 overwriting a project's own tuned agents with these generic ones.
 
@@ -170,7 +170,7 @@ model is, and you never toggle `/model` by hand.
 |---|---|---|
 | `/loop-init`, `/loop-plan`, `/retro` | `opus` | Their output is durable and nothing downstream re-checks it |
 | `/orchestrate`, `/loop-handoff` | `sonnet` | Routing and transcription against heavily-scripted rules |
-| `implementer` | `opus` | The escalation tier exists to diagnose, not to retry harder |
+| `implementer`, `security-auditor` | `opus` | The escalation tier diagnoses rather than retries; the auditor reads a whole unit at once |
 | `builder`, `code-reviewer`, `docs-writer`, `verifier` | `sonnet` | The standard tier |
 | `test-runner` | `haiku` | High-output, low-reasoning: run the suite, digest the log |
 
@@ -248,6 +248,35 @@ policy, and won't commit at all if you tell it not to.
 - **It doesn't skip stages to go faster.** Four spawns per task is the design, not an oversight —
   the cost is in what each spawn carries, which is why lessons are sliced and why every agent has a
   length budget on what it hands the next one.
+
+## The security audit
+
+`security-auditor` (Opus, read-only) runs once at the close of a unit, over everything that unit
+changed. It is a built-in step in `/orchestrate`, not a profile gate — an earlier version of this
+template made it a gate and it silently never ran, because nothing filled the section in.
+
+**Why it isn't just more review:** `code-reviewer` sees one task's diff at a time, and the defects
+worth catching usually aren't in one diff. A route added in T-001, an authorization check relaxed in
+T-003, a field added to a response in T-005 — each diff individually reasonable, the combination
+exposing something. Nothing else in the loop ever looks at the whole change set.
+
+Three design decisions keep it from becoming noise, which is how this kind of stage normally dies:
+
+- **Unit-scoped, not repo-scoped.** A whole-repo audit on a codebase with history re-reports the
+  same pre-existing findings every milestone until nobody reads it. It reads widely — following a
+  changed function to its callers, checking what a new route sits behind — but reports only on what
+  this unit introduced. Pre-existing issues go in a separate labelled list.
+- **Every finding names a path to harm.** "Input validation is missing" is a category nobody can
+  act on. The entry point, the path from input to impact, who can reach it, and what they get — or
+  it isn't a finding.
+- **"No findings" is the expected outcome.** Most units don't introduce a security defect. A stage
+  that always produces findings is manufacturing them, and it gets ignored exactly when it finally
+  has something real.
+
+It never fixes anything. Findings go to you with severity, because you own integration — anything
+worth acting on becomes a new unit via `/loop-plan` or a tracker item. If your project has its own
+SAST or dependency scan, `/loop-init` records it and both run: a scanner knows published
+vulnerabilities and pattern signatures, the auditor knows what the unit was trying to do.
 
 ## Verifying against the running app
 

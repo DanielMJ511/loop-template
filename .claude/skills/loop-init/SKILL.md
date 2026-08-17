@@ -140,7 +140,7 @@ Then determine branch policy, whether the loop may commit at all, and the pre-co
 
 Propose a concrete list. Start from what the project already has, then fill the gaps:
 
-- **Security review.** Look for an existing one first: a SAST step in CI (`codeql`, `semgrep`, `snyk`, `trivy`, `bandit`, `npm audit`, `dependency-check`), a scheduled workflow, or a documented process. If one exists, record that command. If none does, propose `claude -p /security-review` as the gate rather than leaving it blank — a read-only pass at the milestone boundary is the loop's only holistic look at the change set, since `code-reviewer` only ever sees one task's diff.
+- **Security scanning.** `/orchestrate` always spawns `security-auditor` at the close of a unit, so you do not record that here — it is built in. What you are looking for is the project's own scanner: a SAST or dependency step in CI (`codeql`, `semgrep`, `snyk`, `trivy`, `bandit`, `npm audit`, `dependency-check`), or a documented process. Record the command if one exists. The two are complementary rather than redundant — a scanner knows published vulnerabilities and pattern signatures, the auditor knows what the unit was trying to do — so having one is not a reason to skip the other. If the project has no scanner, record `none` rather than inventing one.
 - **Closing the work item.** From the tracker detected in step 4, if any. Mark it as requiring user confirmation.
 - **Anything the project's own process already requires** at a release or merge boundary — a changelog entry, a version bump, a migration check, a manual smoke test. Read `CONTRIBUTING.md` and the PR template for these rather than inventing them.
 

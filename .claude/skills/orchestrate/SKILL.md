@@ -28,6 +28,8 @@ If `loop/HANDOFF.md` has content newer than the last `STATE.md` entry, read it a
 
 If `loop/PLAN.md` has no work item loaded or no tasks, stop and tell the user to run `/loop-plan` first.
 
+**Record the unit's base commit** — `git rev-parse HEAD` — in `loop/PLAN.md` under the Summary heading as `Unit base: <sha>`, if it isn't there already. Step 8's security audit reviews the whole unit's change set and needs a range; a resumed session that never captured it has no way to reconstruct where the unit began. Write it to the file rather than holding it: this run may not be the one that closes the unit. Do not overwrite an existing value — the first run of the unit owns it.
+
 ## 2. Pick the next task
 
 Take the next unchecked (`- [ ]`) task in `loop/PLAN.md` order. Read its full packet at `loop/tasks/T-00X.md`.
@@ -121,7 +123,17 @@ Only if the profile's Git section permits the loop to commit. If it says the use
 
 If `loop/PLAN.md` still has unchecked tasks, return to step 2.
 
-If all tasks are checked off, stop and tell the user the unit's implementation is complete. Then walk the profile's Milestone-close gates in order, doing the ones that have commands and prompting the user for the ones that are theirs.
+If all tasks are checked off, stop and tell the user the unit's implementation is complete.
+
+**Then spawn `security-auditor` on the unit's cumulative change set** — the range from the commit the unit started at to `HEAD`, plus the working tree if the loop hasn't committed. Give it the unit's goal from `loop/PLAN.md` and the profile's Architecture section.
+
+This is the loop's only holistic look at the change set. `code-reviewer` sees one task's diff at a time, so a defect that emerges from how several tasks compose — a route added in one, an authorization check relaxed in another — passes every per-task review while being plain across the unit.
+
+- **NO FINDINGS** → record it in the close entry and continue. This is the normal outcome and is not a reason to doubt the stage.
+- **FINDINGS** → do not fix them here and do not quietly open new tasks. Report them to the user with severity, since they own integration. A `critical` finding is worth saying plainly that you would not merge on. Anything they want fixed becomes a new unit via `/loop-plan`, or a tracker item under "Filing follow-up work" below.
+- **Pre-existing issues** it lists separately are follow-up items, never a reason to hold this unit.
+
+Then walk the profile's Milestone-close gates in order, doing the ones that have commands and prompting the user for the ones that are theirs. If the profile's gates include a SAST or dependency-scan command, run it as well — it and `security-auditor` catch different things, and neither substitutes for the other: the scanner knows published vulnerabilities and pattern signatures, the auditor knows what this unit was trying to do.
 
 Once the user reports the outcome of any gate that was theirs, append a close entry to `loop/STATE.md` recording it (unit, item ref, findings or "no findings"). Do this even though the loop has ended: no `docs-writer` runs after the last task, so without this step the journal's final entry reads "remaining steps are the user's" forever and the gate looks skipped.
 

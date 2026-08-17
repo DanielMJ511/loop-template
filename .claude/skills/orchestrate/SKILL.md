@@ -20,15 +20,37 @@ Two requirements, in every spawn prompt:
 - State the project's **absolute** path, and have the agent verify it — print the working directory and confirm a known file is present — before it does anything else.
 - Require that any environment fact it reports names the absolute path it applies to. "The file is missing" is unfalsifiable; "missing at `<abs path>`" is checkable, and it is what turns a wrong-directory error from invisible into obvious.
 
-If `loop/HANDOFF.md` has content newer than the last `STATE.md` entry, read it and resume from the task/stage it describes instead of restarting from `loop/PLAN.md`'s first unchecked task.
+If `loop/HANDOFF.md` exists and reads `Status: active`, resume from the task and stage it describes instead of restarting from `loop/PLAN.md`'s first unchecked task. Immediately after resuming, rewrite that line to `Status: consumed (resumed <ISO-8601 timestamp>)`.
+
+**Decide this on the status field alone — never by comparing dates.** `/loop-handoff` appends its own entry to `STATE.md` as its final act, so "newer than the last journal entry" is a comparison a checkpoint can never win, and journal entries are date-granular anyway. A checkpoint left `active` after a resume is just as bad in the other direction: it gets replayed later onto a task that has long since moved on.
 
 If `loop/PLAN.md` has no work item loaded or no tasks, stop and tell the user to run `/loop-plan` first.
 
 ## 2. Pick the next task
 
-Take the next unchecked (`- [ ]`) task in `loop/PLAN.md` order. Read its full packet at `loop/tasks/T-00X.md`.
+Take the next task in `loop/PLAN.md` order that is both unchecked (`- [ ]`) and not marked blocked (`- [!]`). Read its full packet at `loop/tasks/T-00X.md`.
+
+Pass over `- [!]` tasks here and report them together when the run ends. A blocked task is one a human has to unblock; re-entering it spends the whole escalation ladder a second time on the failure that already exhausted it. If every remaining task is blocked, stop and say so rather than looping.
+
+### The task line is the loop's durable state
+
+Everything needed to resume a task lives on its `loop/PLAN.md` line, not in this session's context:
+
+```
+- [ ] T-003 — title (loop/tasks/T-003.md)
+- [ ] T-003 — title (loop/tasks/T-003.md) @base=a1b2c3d attempt=2/2 last=test-fail
+- [!] T-003 — title (loop/tasks/T-003.md) @base=a1b2c3d BLOCKED after 3 — see STATE 2026-08-17
+```
+
+`@base` is the commit the task started from, recorded at step 3. `attempt=n/2` is the failure counter step 4 reads and writes. Update the line as each outcome lands, before moving on.
+
+**A counter held only in your context is not a counter.** A compaction, a crash or a session limit erases it, and the next run restarts at attempt 1 a task that had already spent both — burning the escalation ladder twice on the same defect. That is the single failure this annotation exists to prevent.
 
 ## 3. Build
+
+Before spawning, record `git rev-parse HEAD` as `@base=<sha>` on the task line. This is the point the task's diff is measured from, and it has to be captured now — once the builder has written files there is no way to recover where the task started.
+
+Record it **once per task, on the first attempt only.** A respin from step 4 or step 5 re-enters the builder, not this step: re-recording the base there would move it past the work already done and shrink the task's diff to just the retry.
 
 Spawn `builder` with: the task packet, the profile's Commands and Conventions sections, any decision records the packet references, and the `[builder]`-tagged lessons quoted verbatim.
 
@@ -37,10 +59,12 @@ Spawn `builder` with: the task packet, the profile's Commands and Conventions se
 Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile's Commands and Prerequisites.
 
 - **Pass** → step 5.
-- **Fail** → track a per-task failure counter:
-  - **1st failure**: respawn `builder` with the packet plus `test-runner`'s failure digest. Return to step 4.
-  - **2nd consecutive failure**: escalate to `implementer`, passing the full history — both diffs and both failure digests — plus the same `[builder]` slice. Return to step 4.
-  - **3rd failure (implementer also failed)**: stop working this task. Append a "task blocked" entry to `loop/STATE.md` (task id, failure history summary). Return control to the user — do not retry further.
+- **Fail** → the per-task failure counter is the `attempt=` field on the task line. Read it from there, never from memory, and write it back before you act on it:
+  - **1st failure**: set `attempt=2/2 last=test-fail` on the task line, append the `STATE.md` line described below, then respawn `builder` with the packet plus `test-runner`'s failure digest. Return to step 4.
+  - **2nd consecutive failure**: record it the same way, then escalate to `implementer`, passing the full history — both diffs and both failure digests — plus the same `[builder]` slice. Return to step 4.
+  - **3rd failure (implementer also failed)**: stop working this task. Change its checkbox to `- [!]` and annotate it `BLOCKED after 3 — see STATE <date>`, append a "task blocked" entry to `loop/STATE.md` (task id, failure history summary). Return control to the user — do not retry further.
+
+**Journal every respin as it happens, not once the task is done.** `docs-writer` runs only after a task is approved (step 6), so a task that dies mid-escalation currently leaves no record that it was ever attempted. One line per respin is enough: task id, which attempt, and what failed.
 
 **A prerequisite failure is not a test failure.** If `test-runner` reports a missing prerequisite from the profile — a container runtime down, a service unreachable, a missing env file — fix the environment or tell the user, and do not count it against the task's failure counter. Spending an escalation on a stopped Docker daemon wastes the ladder's most expensive rung on a non-defect.
 

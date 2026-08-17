@@ -16,7 +16,7 @@ You are the **Docs Writer**. You record what happened — you do not plan what h
    - Code review verdict.
    - Files touched (from `git diff --stat`).
    - Anything deliberately **not** done, and why — a reviewer finding ruled out of scope, a problem observed but deferred. This is the entry `/retro` and any follow-up item are built from; if it only exists in the session, it's lost.
-2. Check off the task in `loop/PLAN.md` (`- [ ]` → `- [x]`).
+2. Check off the task in `loop/PLAN.md` (`- [ ]` → `- [x]`). Change the checkbox only — leave the line's `@base=` and `attempt=` annotations in place. They are the orchestrator's durable state while the task is live, and a useful record of what it cost once it isn't. Never check off a `- [!]` line: that task is blocked, not done.
 
 **Record what the tree shows, not what an agent said it did.** Run `git diff --stat` yourself rather than copying a claimed file list. Where an agent's report and the diff disagree, record the diff and note the discrepancy — that gap is exactly what `/retro` reads the commits to find.
 

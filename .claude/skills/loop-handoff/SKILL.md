@@ -6,7 +6,7 @@ description: Overwrite loop/HANDOFF.md with a checkpoint of the in-flight task, 
 Gather the current loop state:
 
 - Which task (`T-00X`) is in flight, and which stage it's at (`builder`, `test-runner`, `code-reviewer`, `docs-writer`, or blocked/escalated).
-- The failure counter for that task, if any respins have happened — without it, a resumed session restarts the escalation ladder from zero and can burn two more attempts on a task already at its limit.
+- The failure counter for that task, if any respins have happened. Read it off the `attempt=` field on the task's `loop/PLAN.md` line rather than from the conversation — that line is the durable copy, and it is what a resumed session will trust.
 - The last test result (pass/fail, which files or suites).
 - `git status --short` output.
 - One-line description of the next action when work resumes.
@@ -17,7 +17,8 @@ Overwrite `loop/HANDOFF.md` — this is a single checkpoint, not a log; replace 
 
 ```
 # HANDOFF — session checkpoint
-Written: <timestamp>
+Written: <ISO-8601 timestamp, e.g. 2026-08-17T19:42:00Z>
+Status: active
 
 ## Unit
 <work item ref>
@@ -44,6 +45,6 @@ Written: <timestamp>
 <one line>
 ```
 
-Append a single line to `loop/STATE.md`: `## <date> — Handoff checkpoint written`.
+Append a single line to `loop/STATE.md`: `## <date> — Handoff checkpoint written`. This is a journal record only — it is **not** how the checkpoint is found, and nothing should compare it against anything.
 
-`/orchestrate` reads `loop/HANDOFF.md` first on its next invocation and resumes from the described task and stage if it's newer than the last `loop/STATE.md` entry, instead of restarting from `loop/PLAN.md`'s first unchecked task.
+`/orchestrate` reads `loop/HANDOFF.md` first on its next invocation and resumes from the described task and stage whenever `Status: active`, instead of restarting from `loop/PLAN.md`'s first unchecked task. It flips the status to `consumed` as it resumes, so the same checkpoint is never replayed onto a task that has moved on.

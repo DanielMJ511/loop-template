@@ -1,0 +1,117 @@
+---
+name: loop-init
+description: Detect this project's stack, conventions, tracker and git policy, and write loop/PROFILE.md so the loop can run here without any hand-editing. Use once per project when adopting the loop, or when the user says "/loop-init". Also use to re-detect after a project's build or conventions change materially.
+---
+
+Run in the main session. Detect, propose, write the profile, stop. **Never plan a milestone, write a task packet, or touch application code** — `/loop-plan` does the first two and `builder` does the third.
+
+Your entire job is to make every later stage able to work here without reading a single machinery file. If you leave a field guessed where it could have been detected, every downstream agent inherits that guess and acts on it with full confidence.
+
+## 1. Decide the mode
+
+```
+git -C . log --oneline -1 2>/dev/null | head -1
+```
+
+- Output, and source files present → **brownfield**. Conventions already exist in the code, whether or not anyone wrote them down. Detect them.
+- No commits, or no source files → **greenfield**. Nothing to detect. Go to step 6.
+
+If the repo has history but only scaffolding (a generated starter with no real code yet), treat it as greenfield and say so — detecting "conventions" from a framework's `init` output produces confident nonsense.
+
+## 2. Detect commands and prerequisites
+
+Read the build manifest and the CI config together. CI is the higher-trust source: it records the commands that actually have to pass, while a README drifts.
+
+Look for, in this order: the build manifest for the stack (`package.json`, `pom.xml`, `build.gradle`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Gemfile`, `*.csproj`, `mix.exs`), then `.github/workflows/`, `.gitlab-ci.yml`, `Makefile`, `justfile`, `Taskfile.yml`, then the README's build section.
+
+Determine: build, full test suite, **single test file**, **single test case**, lint, type check, run-locally. The two single-test forms matter more than they look — without them, every `test-runner` spawn runs the entire suite, and on a slow suite that is where the loop's time goes.
+
+**Prerequisites are as important as the commands.** Find what must be true for the suite to pass: a container runtime, a running service, an env file, a seeded database, a compiled native dependency, a specific runtime version. For each, record the check command *and the symptom when it's missing* — a missing prerequisite produces a failure that reads like a code bug, and `test-runner` needs to distinguish them without guessing.
+
+Verify by running: the build command, the lint command, and a single-test invocation. Do not run the full suite — it can be slow, and the single-test run already proves the invocation shape.
+
+If a command fails, that is a finding, not a blocker. Record it in Open questions with the actual error. A project whose documented build doesn't work is exactly what the loop needs to know before a builder blames itself.
+
+## 3. Detect conventions
+
+This is the section that decides whether the loop produces code that looks native or code that looks bolted on. Read real files — pick the two or three most recently-changed non-trivial source files plus their tests.
+
+Determine: layering and module boundaries; where each kind of new code goes; how data crosses the boundary to callers; dependency wiring style; error and failure handling; how schema or data-shape changes are made; test placement and naming; what "done" looks like for a change (does a change normally arrive with tests, docs, a changelog entry).
+
+Two rules on how you write these down:
+
+**Cite evidence, never assert.** Each convention gets a `path:line` where the pattern is visible. A reviewer flagging a violation needs to point at the precedent, and a wrong detection needs to be visibly wrong.
+
+**Record how each rule is enforced** — a test, a lint rule, a compiler or schema check, or "convention only, reviewer must catch it". This distinction is the difference between a rule the loop can rely on and a rule the loop must actively police. Mark the unenforced ones: they are where review attention goes.
+
+### Reference existing docs, do not absorb them
+
+If the project already has `CONTRIBUTING.md`, `CLAUDE.md`, `AGENTS.md`, a style guide, or a decision-record directory, **link to it and summarize what it governs in one line.** Do not copy its rules into the profile. Two copies of a rule drift apart, and then agents follow whichever they read first — the exact failure the loop's own lessons file warns about. If such a doc already covers conventions thoroughly, the profile's conventions section should be mostly pointers.
+
+## 4. Detect work-item source and tracker
+
+Establish where work comes from, in this order:
+
+1. Ask what the user actually wants to loop on. Their answer outranks detection — a repo can have GitHub Issues enabled and still receive its real work as Jira tickets or as verbal requests.
+2. Check what exists: `gh issue list --limit 3` for GitHub Issues; issue references in recent commit subjects (`ABC-123`, `#123`) to spot an external tracker; a `.github/ISSUE_TEMPLATE/` directory.
+
+Set `source` to exactly one of:
+
+- **`milestone-chain`** — an ordered set of tracked milestones with a consistent body shape. Record how to list them, how the next is chosen, and the required sections.
+- **`ticket`** — work arrives as individual tracked items with no guaranteed structure. Record the fetch command. Do not record required sections; there are none.
+- **`prompt`** — no tracker item. The user describes the work. Correct for a personal project, a greenfield start, and most single work tasks.
+
+When in doubt choose `prompt`. It is the only source that cannot be wrong, and `/loop-plan` handles the others by fetching *into* the same shape anyway.
+
+## 5. Detect git policy and footprint
+
+```
+git log --oneline -20
+git symbolic-ref --short HEAD
+ls .github/pull_request_template.md .husky .pre-commit-config.yaml 2>/dev/null
+```
+
+Infer the commit message format from what's actually there — if 20 commits show `type: summary`, that's the format; if they show `[ABC-123] summary`, that's the format. Record it as a pattern with a real example.
+
+Then determine branch policy, whether the loop may commit at all, and the pre-commit gate.
+
+**Ask about footprint explicitly, in a shared repo:** should loop files be committed, or stay local? Default to local for any repo with other contributors — teammates seeing unexplained agent config in a PR is a real cost. Local means adding the loop paths to `.git/info/exclude`, which is per-clone and never committed, so the shared `.gitignore` is untouched.
+
+## 6. Greenfield: write a provisional profile instead
+
+Nothing to detect, so ask for the minimum and mark everything provisional.
+
+Ask only what blocks the first task: what is being built and in what language/stack; whether a project skeleton exists yet or the loop's first task creates it; how they want to be told what to build (almost always `prompt`); and whether this repo will have other contributors.
+
+Then write the profile with:
+
+- Commands filled in from the stack's conventional defaults, each marked `(assumed)`.
+- Conventions **left open** — one line saying they get filled in as decisions are made. Do not invent a layering rule for code that doesn't exist. An invented convention becomes a constraint that fights the project's real shape a week later.
+- `source: prompt`.
+- Git policy: no commits until the user asks, since there is no history to infer a format from.
+- Open questions listing every assumed field.
+
+Say plainly which fields are assumed and that the first `/retro` should revisit them. A greenfield profile is a starting position, not a specification.
+
+## 7. Propose, then write
+
+Show the user the profile you're about to write — the detected facts with their evidence, the assumptions clearly separated, and the open questions. Get confirmation before writing anything.
+
+Lead with the things most likely to be wrong: any command you couldn't verify, any convention detected from a single example, and the work-item source.
+
+Then write:
+
+1. `loop/PROFILE.md` — filled in from `.claude/loop-templates/PROFILE.template.md`.
+2. `loop/LESSONS.md` — copy `.claude/loop-templates/LESSONS.seed.md` verbatim. Do not edit the seeded lessons to match this stack; they are stack-independent by construction, and `/retro` retires any that prove inapplicable.
+3. `loop/PLAN.md` — a stub saying no work item is loaded and to run `/loop-plan`.
+4. `loop/STATE.md` — a header line and an adoption entry (date, mode, detected stack, work-item source).
+5. `loop/tasks/README.md` — copy `.claude/loop-templates/tasks-README.md`.
+6. If footprint is local: append `loop/` and `.claude/` to `.git/info/exclude`, then confirm with `git status --short` that the repo reads clean. Verify with `git check-ignore -v loop/PLAN.md` that the exclusion resolves to `.git/info/exclude` and not to a committed `.gitignore`.
+
+## 8. Stop
+
+Report: the mode, the stack, the work-item source, anything you could not determine, and any command that failed verification.
+
+Tell the user to skim `loop/PROFILE.md` — particularly the conventions section, since that is what shapes every line of code the loop writes — and then run `/loop-plan` when ready.
+
+Do not continue into planning, even if the user's original request was to start building. The profile is a checkpoint worth a human glance precisely because everything downstream depends on it.

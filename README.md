@@ -7,25 +7,73 @@ the expensive model twice and gave up on a task zero times.
 
 ## Adopt it
 
+Copy `.claude/` into your project, then run `/loop-init`. That's the whole adoption — `/loop-init`
+detects the stack, commands, conventions, tracker and git policy, proposes what it found with
+evidence for each claim, and writes `loop/PROFILE.md`. **You are not asked to fill in a config file,
+and no agent has to read this loop's machinery to work out how to adapt to your project.**
+
+### Copying it in
+
+14 files, in three subfolders (`agents/`, `skills/`, `loop-templates/`). None of them is a
+`settings.json`, so your own settings are never touched.
+
+**If the project has no `.claude/` folder yet** — copy the whole folder in:
+
 ```bash
-cp -r /path/to/loop-template/.claude /your/project/
+cp -r /path/to/loop-template/.claude .
+```
+```powershell
+Copy-Item -Recurse \path\to\loop-template\.claude .
 ```
 
-Then, in the project:
+**If the project already has a `.claude/` folder** — and any project you've used Claude Code in
+will — copy the *contents*, don't paste the folder on top:
 
+```bash
+cp -r /path/to/loop-template/.claude/. .claude/
 ```
-/loop-init
+```powershell
+Copy-Item -Recurse \path\to\loop-template\.claude\* .claude\
 ```
 
-That's the whole adoption. `/loop-init` detects the stack, the commands, the conventions, the
-tracker and the git policy, proposes what it found with evidence for each claim, and writes
-`loop/PROFILE.md`. **You are not asked to fill in a config file, and no agent has to read this
-loop's machinery to work out how to adapt to your project.**
+Note the `/.` and the `*`. Without them, `cp -r src/.claude .` copies the folder *inside* the
+existing one and you get `.claude/.claude` — broken, and silently so.
 
-It works on an empty directory too — greenfield mode asks four questions and writes a provisional
-profile, so a brand-new project can start looping immediately.
+**Watch for name collisions.** If the project already defines an agent named `builder`,
+`code-reviewer`, `docs-writer`, `implementer`, `test-runner` or `teacher`, or a skill named
+`orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or skip those rather than
+overwriting a project's own tuned agents with these generic ones.
 
-Then:
+**Then check the agents resolve** before trusting a run: confirm `builder` and `test-runner` appear
+in your available agents. Takes seconds and derisks everything downstream.
+
+### A brand-new project
+
+`/loop-init` finds nothing to detect and switches to **greenfield mode**: four questions (what
+you're building, the stack, whether a skeleton exists, whether others will contribute), then a
+provisional profile with every field marked `(assumed)` and **the conventions section deliberately
+left empty**. That emptiness is the point — inventing a layering rule for code that doesn't exist
+gives you a constraint that fights the project's real shape a week later. Conventions fill in as
+decisions get made.
+
+Expect `test gate: no test suite`, so verification falls back to build and lint. Making the test
+harness your first task is usually right; that's what turns the gate real.
+
+### A long-settled project
+
+`/loop-init` runs **brownfield mode**: finds every manifest, reads CI, derives the commands and
+verifies them by running, reads conventions off your recently-changed source files, and infers your
+commit format from `git log` rather than imposing one. It shows you everything with its evidence and
+waits for confirmation.
+
+Two things matter more here than anywhere else:
+
+- **Read the conventions section before approving it.** It shapes every line the loop writes. Rules
+  detected from a single example say so — check those first.
+- **Choose the local footprint** for any repo with other contributors (see below). Teammates seeing
+  unexplained agent config in a PR is a real cost.
+
+### Then, either way
 
 ```
 /loop-plan       # decompose the work, grill it, record decisions — writes no code
@@ -94,8 +142,23 @@ It's the only stage that needs your attention, and it can't be delegated. When t
 the full session, `/loop-plan` has a five-question short form — a defined short form beats silent
 abandonment, which is what actually happens under deadline.
 
-The full session uses `mattpocock-skills:grill-with-docs` if you have it; the short form needs
-nothing installed.
+**Grilling is not bundled with this template, and the loop does not depend on it.** There are two
+tiers:
+
+- **Full session** — uses `mattpocock-skills:grill-with-docs`, a marketplace plugin. It is *not* part
+  of `.claude/`, so copying this template does not bring it along. It also cannot be model-invoked
+  (`disable-model-invocation: true`), so `/loop-plan` asks you to run it rather than running it
+  itself.
+- **Short form** — built into `/loop-plan` step 4. Five questions, nothing to install, works in every
+  project immediately.
+
+If you want the full session available everywhere, install the plugin at **user scope** via
+`/plugin`, not project scope. A plugin installed with project scope is recorded against that one
+project path and will not appear in your next repo — which is the usual reason grilling seems to
+"disappear" when you adopt the loop somewhere new.
+
+Either tier satisfies step 4. `/loop-plan` records which one ran in `loop/PLAN.md`, so the journal
+never implies a full session happened when it didn't.
 
 ## Working in someone else's repo
 

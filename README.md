@@ -41,8 +41,8 @@ existing one and you get `.claude/.claude` — broken, and silently so.
 
 **Watch for name collisions.** If the project already defines an agent named `builder`,
 `code-reviewer`, `docs-writer`, `implementer`, `test-runner` or `teacher`, or a skill named
-`orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or skip those rather than
-overwriting a project's own tuned agents with these generic ones.
+`loop-init`, `loop-plan`, `orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or
+skip those rather than overwriting a project's own tuned agents with these generic ones.
 
 **Then check the agents resolve** before trusting a run: confirm `builder` and `test-runner` appear
 in your available agents. Takes seconds and derisks everything downstream.
@@ -175,4 +175,6 @@ policy, and won't commit at all if you tell it not to.
   what would waste their time.
 - **It doesn't run unattended.** Every skill is a foreground invocation. Nothing is scheduled.
 - **It doesn't skip stages to go faster.** Four spawns per task is the design, not an oversight —
-  the cost is in what each spawn carries, which is why lessons are sliced.
+  the cost is in what each spawn carries, which is why lessons are sliced. Four is the clean path;
+  a task that fails twice and escalates costs roughly nine, since every respin re-runs the test and
+  review stages too. Budget against that number, not the happy one.

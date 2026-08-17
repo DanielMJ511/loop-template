@@ -83,7 +83,7 @@ Clear `loop/tasks/*.md` and write fresh packets, numbering from `T-001` (numberi
 
 ```
 # T-00X — <title>
-Unit: <work item ref>   Status: pending
+Unit: <work item ref>
 
 ## Description
 <what to build>

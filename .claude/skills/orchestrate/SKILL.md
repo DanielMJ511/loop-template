@@ -115,7 +115,8 @@ If the task surfaced work you deliberately did not do — a reviewer finding rul
 
 Only if the profile's Git section permits the loop to commit. If it says the user commits manually, stop here and summarize what's staged for them.
 
-- `git add` only the files this task touched (never `git add -A`), plus `loop/PLAN.md` and `loop/STATE.md` if the loop is committed in this repo.
+- `git add` only the files this task touched — never `git add -A`. Use the list `docs-writer` derived at step 6 rather than an agent's claim about what it edited; that list is taken against the task's `@base` and includes the files the task created.
+- If the loop is committed in this repo, also stage `loop/PLAN.md`, `loop/STATE.md`, `loop/tasks/`, and **any decision record written at step 6** (the profile names the directory). A record drafted moments earlier and left unstaged is the one artifact here meant to be immutable and permanent — leaving it behind means it either lands in some later task's commit with an unrelated message, or is lost to a stray checkout.
 - Run the profile's full test command once more — the step 4 run may have been scoped to specific files, and the profile's pre-commit gate applies.
 - Respect the profile's branch policy. If it forbids committing to the default branch and that's where you are, create a branch first.
 - Use the profile's commit message format exactly.

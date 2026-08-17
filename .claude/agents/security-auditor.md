@@ -1,6 +1,6 @@
 ---
 name: security-auditor
-description: "Reviews a completed unit's cumulative change set for security defects that per-task review cannot see. Spawned by /orchestrate at a milestone-close gate. Read-only: never modifies the codebase."
+description: "Reviews a completed unit's cumulative change set for security defects that per-task review cannot see. Spawned by /orchestrate as a built-in step once a unit's last task closes, before the profile's own gates. Read-only: never modifies the codebase."
 tools: Read, Bash, Glob, Grep
 model: opus
 hooks:

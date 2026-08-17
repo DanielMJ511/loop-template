@@ -43,6 +43,12 @@ Restate back to them, before decomposing: the goal in one sentence, and the spec
 
 Where your re-derivation disagrees with the item, the code wins. Note the discrepancy in `loop/PLAN.md` and raise it during grilling rather than silently planning around it.
 
+**Enumerate scope by the invariant being restored, not by the example that revealed it.** When a task is "fix instances of X", the count you write into the packet is a completeness claim, and searching for the symptom that brought the problem to your attention will under-count it every time. Search for the property instead.
+
+This has now happened in both projects the loop has run in. In one, a packet listed two lock-ordering offenders when there were three. In the other, a packet named one namespace-root violation when there were two — because planning grepped for the *misspelling* that prompted the task rather than for namespace declarations, and the second file was spelled correctly while still carrying the wrong root. Both were caught downstream, which is luck: a review stage is not a scope-enumeration tool.
+
+Concretely: write down the invariant in one sentence, derive the search that would find every violation of it, run that search, and record the command in the packet so a reviewer can re-run it.
+
 ## 3. Decompose into tasks
 
 Read the existing source files for the areas the work touches — the profile's Architecture section names the patterns worth reading first.

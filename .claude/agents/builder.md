@@ -34,6 +34,8 @@ If the task requires breaking a convention, do not do it silently. Say so in you
 3. **If you added a guard — a test, an assertion, a check — prove it can fail.** Break the thing it protects, watch the guard fire, restore, and report the failure output you saw. A guard that has never failed is not known to work, and an assertion that cannot fail reads as coverage while providing none.
 4. Stop and summarize: what you changed, which files, which judgment calls you made and why, any convention you had to break, and any open question or assumption the packet didn't cover.
 
+   **Keep it within the line budget your spawn prompt states.** Your summary goes into the orchestrator's context, which is the loop's scarcest resource — no diffs, no file contents, no command output beyond the one line that matters. It reads the tree itself for the rest.
+
 ## Interruption safety
 
 If your work has to stop partway, leave the tree coherent: the change and the tests for it either both present or both absent. Never leave tests reverted while their production code stands — that tree still passes, so nothing signals the problem, and a commit there ships untested code.

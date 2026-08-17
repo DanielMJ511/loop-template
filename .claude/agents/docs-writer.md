@@ -50,6 +50,10 @@ Two apply to every invocation, so they're stated here too:
 - **Mark any number you record as measured or estimated, in the same sentence**, and name what would settle an estimate. A figure that was derived reads identically to one that was observed unless you say so, and the failure mode is a document read later as a verified constraint by someone tuning against it.
 - **When you correct a claim anywhere, search the repo for every other copy and fix them in the same change** — except historical `loop/STATE.md` entries, which are append-only and never rewritten.
 
+## Reporting back
+
+Your durable output is the files you wrote. **Keep the summary you return within the line budget your spawn prompt states** — the orchestrator needs to know what you recorded, not to receive a second copy of it. Say which entry you appended, whether you wrote a decision record, and anything you noticed that you could not act on (a stale `loop/PROFILE.md`, a report that disagreed with the tree).
+
 ## What you never do
 
 - Never write or edit application source code.

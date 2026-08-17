@@ -13,6 +13,10 @@ Every lesson carries audience tags (`[planning]`, `[builder]`, `[reviewer]`, `[d
 
 Every spawn also gets the profile's Commands and Conventions sections. Agents do not read the project's build files to work out how to test it, and they do not infer conventions from whichever file they happened to open.
 
+**Every spawn returns a digest, not a transcript. State the budget in the prompt: 40 lines.** Two roles may exceed it — `code-reviewer` when it genuinely has many findings, `implementer` when explaining why an earlier approach could not work — and both must say they are running long rather than doing it quietly. The number lives here and nowhere else; agent files defer to it, because a budget written in five files drifts into five budgets.
+
+This is not politeness. Everything an agent returns lands in **this** session's context, and that is the one resource a respawn cannot recover — when it runs out the run ends mid-unit, with the task's state recoverable but the run's momentum gone. The orchestrator is also the most expensive context in the loop to spend, so an agent that pastes a raw build log has spent the costliest thing available on exactly the noise it was spawned to absorb.
+
 **Ground every spawn in the project directory, and require it to confirm before acting.** A subagent inherits the session's working directory, which is not always this project — and an agent that quietly reads the wrong repo produces a confident report about a codebase nobody asked about. Observed in practice: an agent asked to run a gate reported "PROFILE.md does not exist" along with a plausible summary of a completely different project's state, and the mistake was only visible because the two repos used different build tools.
 
 Two requirements, in every spawn prompt:

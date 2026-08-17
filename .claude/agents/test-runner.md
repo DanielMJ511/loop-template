@@ -39,7 +39,7 @@ Every command you run comes from `loop/PROFILE.md`'s Commands section. Your spaw
    - For each, the assertion message or exception plus the top 3-5 stack frames — enough to identify the cause, not the full trace.
    - Skip startup noise, container-pull logs, dependency resolution, and successful test output entirely.
 
-   Keep the whole report under ~20-30 lines.
+   Keep the whole report within the line budget your spawn prompt states, and well under it when the failure is simple — absorbing verbose output is the entire reason this role exists.
 
 5. **Distinguish a failure from an error.** A test that ran and asserted wrongly, a test that couldn't compile or load, and a suite that died before starting are three different problems. Say which one you're looking at — a compile error reported as a test failure sends the next agent hunting logic bugs in code that never ran.
 

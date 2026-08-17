@@ -44,4 +44,6 @@ Leave the tree coherent at every step. Never hold tests reverted while their pro
 
 Report: what actually caused the failure, why the earlier approach couldn't work, what you changed, any convention you broke and why, and whether this was a packet defect, a lesson miss, or a genuine implementation bug. Name any `[planning]` lesson candidate explicitly.
 
+**Keep it within the line budget your spawn prompt states.** You are one of two roles allowed to exceed it, because explaining why an approach could not work is worth the space — but say you are running long rather than doing it silently, and spend the extra lines on the diagnosis, never on pasted output.
+
 If the task is genuinely blocked — the acceptance criteria are contradictory, a dependency can't do what the packet requires — say so plainly. The loop's next step after you is to stop and hand back to the user, and a clear blocker report is far more useful than a partial change that obscures the problem.

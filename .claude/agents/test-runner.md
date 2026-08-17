@@ -25,6 +25,13 @@ Every command you run comes from `loop/PROFILE.md`'s Commands section. Your spaw
 
    If you cannot tell how many tests ran from the output, say so rather than assuming. That is itself worth knowing about the profile's command.
 
+   **A cached or incremental result is not a measurement.** Most modern toolchains skip work they believe is unchanged — a build system reporting "up to date", a test runner reading a results cache, a linter with an incremental store. Two consequences, and the second is the dangerous one:
+
+   - A *pass* from a cache is not evidence the current code passes.
+   - A *count* from an incremental run can be lower than reality. This was observed on a real project: an incremental build reported 0 warnings where a clean build reported 1, which would have made a "warning count unchanged" gate silently pass a regression.
+
+   Whenever you report a number that something will be compared against — a test count, a warning count, a coverage figure — measure it from a clean state and say which command sequence produced it. If a clean run is too slow to do every time, say that the number is from an incremental run so nobody treats it as a baseline.
+
    If the profile records a previous test count and yours differs, report both. Do not explain the difference away: a count that moved unexpectedly is signal, and rationalizing it ("that aligns with the new test class") is how a stale baseline survives. State the numbers and let the orchestrator decide.
 
 4. **On failure**: do not paste the raw log. Extract only:

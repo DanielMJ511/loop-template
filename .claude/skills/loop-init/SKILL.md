@@ -70,7 +70,7 @@ Run the test command and read what it reports, not just its exit code:
 
 Record the outcome in the profile as a first-class fact, never as a blank:
 
-- **Real gate** — tests exist and ran. Record the count you observed, as the baseline.
+- **Real gate** — tests exist and ran. Record the count you observed, as the baseline. **Measure it from a clean state**, and record the command sequence that produced it. Incremental and cached runs under-report: on a real project an incremental build showed 0 warnings where a clean build showed 1, which would have let a "count unchanged" gate pass a regression. A baseline measured off a cache is not a baseline. If a clean run is prohibitively slow, record that the figure is incremental and say so in the same sentence.
 - **No test suite** — the project has none. Say so explicitly, in those words, plus what the test command does when run anyway (typically: exits 0 having done nothing). `/orchestrate` reads this and substitutes a different gate; without it, the loop silently verifies nothing.
 - **Gate exists but is empty or trivial** — a test project with no meaningful assertions. Treat as "no test suite" and say why.
 

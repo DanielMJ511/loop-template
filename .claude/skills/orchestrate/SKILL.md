@@ -13,6 +13,13 @@ Every lesson carries audience tags (`[planning]`, `[builder]`, `[reviewer]`, `[d
 
 Every spawn also gets the profile's Commands and Conventions sections. Agents do not read the project's build files to work out how to test it, and they do not infer conventions from whichever file they happened to open.
 
+**Ground every spawn in the project directory, and require it to confirm before acting.** A subagent inherits the session's working directory, which is not always this project — and an agent that quietly reads the wrong repo produces a confident report about a codebase nobody asked about. Observed in practice: an agent asked to run a gate reported "PROFILE.md does not exist" along with a plausible summary of a completely different project's state, and the mistake was only visible because the two repos used different build tools.
+
+Two requirements, in every spawn prompt:
+
+- State the project's **absolute** path, and have the agent verify it — print the working directory and confirm a known file is present — before it does anything else.
+- Require that any environment fact it reports names the absolute path it applies to. "The file is missing" is unfalsifiable; "missing at `<abs path>`" is checkable, and it is what turns a wrong-directory error from invisible into obvious.
+
 If `loop/HANDOFF.md` has content newer than the last `STATE.md` entry, read it and resume from the task/stage it describes instead of restarting from `loop/PLAN.md`'s first unchecked task.
 
 If `loop/PLAN.md` has no work item loaded or no tasks, stop and tell the user to run `/loop-plan` first.

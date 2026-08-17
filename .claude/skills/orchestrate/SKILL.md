@@ -48,9 +48,16 @@ Everything needed to resume a task lives on its `loop/PLAN.md` line, not in this
 
 ## 3. Build
 
-Before spawning, record `git rev-parse HEAD` as `@base=<sha>` on the task line. This is the point the task's diff is measured from, and it has to be captured now — once the builder has written files there is no way to recover where the task started.
+Before spawning, record the point this task's diff will be measured from, as `@base=<sha>` on the task line:
 
-Record it **once per task, on the first attempt only.** A respin from step 4 or step 5 re-enters the builder, not this step: re-recording the base there would move it past the work already done and shrink the task's diff to just the retry.
+- **Tree clean** → `git rev-parse HEAD`.
+- **Tree dirty** (earlier tasks are uncommitted, because the profile's cadence is `per milestone` or `never`) → `git stash create -u`, which writes a snapshot commit of the current state without touching the worktree or the stash stack.
+
+Also record the paths that are already untracked at this moment (`git ls-files --others --exclude-standard`). Step 5 needs them, and they cannot be recovered later.
+
+Record all of this **once per task, on the first attempt only.** A respin from step 4 or step 5 re-enters the builder, not this step: re-recording the base there would move it past the work already done and shrink the task's diff to just the retry.
+
+**Know what this does and does not buy you.** Against a clean tree the base is exact. Against a dirty one it is close but not perfect: `git stash create -u` keeps untracked files in a separate parent rather than in the snapshot's tree, so a file left untracked by an earlier task still reads as *this* task's addition. That is what the untracked-path list above is for — step 5 hands it to the reviewer as a carry-over set. **Exact per-task review requires a per-task commit**; in the other cadences it is best-effort, and the reviewer is told so rather than left to assume.
 
 Spawn `builder` with: the task packet, the profile's Commands and Conventions sections, any decision records the packet references, and the `[builder]`-tagged lessons quoted verbatim.
 
@@ -77,7 +84,20 @@ When a project has no test suite, say so once at the start of the run and recomm
 
 ## 5. Review
 
-Spawn `code-reviewer` on the diff accumulated for this task (`git diff`), with the profile's Conventions section, the `[reviewer]`-tagged lessons, and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).
+Produce this task's diff against the base recorded at step 3:
+
+```
+NEW=$(git ls-files --others --exclude-standard)   # this task's new files
+git add -N -- $NEW        # -N records intent to add; it does not stage content
+git diff <base>
+git reset -q -- $NEW      # undo only those marks
+```
+
+**The `git add -N` is not optional.** `git diff` does not show untracked files at all, so without it a task that adds files is reviewed as though it added nothing — silently, with a clean-looking empty diff.
+
+**Scope both commands to `$NEW`, never to `.`.** A bare `git reset` unstages everything, including anything the user had staged before the run, and losing someone's index to a review step is not a trade the loop gets to make.
+
+Spawn `code-reviewer` on that diff, with the profile's Conventions section, the `[reviewer]`-tagged lessons, the carry-over paths from step 3 (files that were already untracked when this task began, so the reviewer does not read an earlier task's file as this one's), and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).
 
 Without that note, `code-reviewer` will reasonably flag a diff with new behavior and no tests as a critical finding even when testing is a deliberate, separate, already-planned task. That happened in the loop's origin project and cost an extra review round for a non-defect. Include it on every spawn for a unit with a dedicated test task — don't remember it ad hoc per task.
 

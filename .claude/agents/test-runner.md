@@ -21,6 +21,10 @@ Every command you run comes from `loop/PROFILE.md`'s Commands section. Your spaw
 
 3. **On pass**: report one line — what ran, and the test count if the summary shows it.
 
+   **A zero-test run is never a pass.** Read how many tests actually executed, not just the exit code. Some toolchains exit 0 having run nothing at all — `dotnet test` in a repo with no test project restores and returns success in silence. If zero tests ran, report exactly that as its own outcome: `NO TESTS EXECUTED`, with the command you ran and what it printed. The orchestrator handles that case differently from a pass, and reporting it as green makes the loop verify nothing while looking healthy.
+
+   If you cannot tell how many tests ran from the output, say so rather than assuming. That is itself worth knowing about the profile's command.
+
    If the profile records a previous test count and yours differs, report both. Do not explain the difference away: a count that moved unexpectedly is signal, and rationalizing it ("that aligns with the new test class") is how a stale baseline survives. State the numbers and let the orchestrator decide.
 
 4. **On failure**: do not paste the raw log. Extract only:

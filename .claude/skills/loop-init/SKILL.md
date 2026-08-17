@@ -43,6 +43,7 @@ Derive them from the **test runner** instead, which you identify from the manife
 - Find its file-selection and name-filter flags. Most runners have both: one to run a path, one to match a test name.
 - Run each form once against a real test file from this repo and confirm it executes fewer tests than the full suite. Record the exact invocation that worked, not the one the docs suggest.
 - If a package-manager script wrapper needs an argument separator (`npm test -- <args>`), include it in the recorded command — omitting it silently passes the flags to the wrong process.
+- **If the project has no tests, these forms cannot be verified.** Record the runner's documented syntax, mark both rows `(assumed)`, and note that they stay unverified until a suite exists. Do not present an unrun command as a detected fact.
 
 **Prerequisites are as important as the commands.** Find what must be true for the suite to pass: a container runtime, a running service, an env file, a seeded database, a compiled native dependency, a specific runtime version. For each, record the check command *and the symptom when it's missing* — a missing prerequisite produces a failure that reads like a code bug, and `test-runner` needs to distinguish them without guessing.
 
@@ -57,6 +58,23 @@ Then verify by running: the build command, the lint command, and each single-tes
 - **Genuinely broken** — it ran, had what it needed, and failed anyway. This one is a real finding. Record it in Open questions with the actual error, because a project whose documented build doesn't work is exactly what the loop needs to know before a builder blames itself.
 
 Never report a failure without saying which of the three it is. Guessing here is how a prerequisite ends up recorded as a broken build.
+
+### Prove the test gate is real
+
+**The test command is the loop's only automated gate. Establish that it can actually fail before recording it.** A command that always succeeds is worse than no command, because `/orchestrate` treats its exit code as proof and every task sails through.
+
+Run the test command and read what it reports, not just its exit code:
+
+- **How many tests ran?** If the answer is zero, this is not a gate. Several toolchains exit 0 on an empty run with no warning at all — `dotnet test` in a repo with no test project restores, prints nothing about tests, and returns success.
+- **Does a test project or test directory exist?** Search for it directly. Do not infer its existence from the test command succeeding.
+
+Record the outcome in the profile as a first-class fact, never as a blank:
+
+- **Real gate** — tests exist and ran. Record the count you observed, as the baseline.
+- **No test suite** — the project has none. Say so explicitly, in those words, plus what the test command does when run anyway (typically: exits 0 having done nothing). `/orchestrate` reads this and substitutes a different gate; without it, the loop silently verifies nothing.
+- **Gate exists but is empty or trivial** — a test project with no meaningful assertions. Treat as "no test suite" and say why.
+
+When there is no test suite, tell the user plainly at step 7 that the loop's verification stage will not be load-bearing until one exists, and recommend making a test harness the first task. That is their call, not yours — but they must make it knowingly, because the failure mode is invisible.
 
 ## 3. Detect conventions
 

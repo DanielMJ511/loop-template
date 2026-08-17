@@ -32,6 +32,15 @@ failure that reads like a code bug.
 - `<e.g. container runtime running — check with "docker version"; when down, the integration tests
   emit a connection stack trace that reads like a code bug>`
 
+**Test gate status** — `<real gate | no test suite | gate exists but empty>`. The loop's only automated
+verification. Record what was **observed**, not what the command returned:
+
+- If a real gate: `<N tests observed passing on <date>>`.
+- If no test suite: say so plainly, and what the test command does when run anyway (e.g. "exits 0
+  having run nothing"). `/orchestrate` reads this and substitutes the build, type-check and lint
+  commands as the gate instead. Without this field the loop reports every task as verified while
+  executing zero assertions.
+
 **Test scope default** — `<full suite | changed-area only>`. Set this to changed-area only when the
 full suite is slow enough that agents will be tempted to skip it; `/orchestrate` still runs the
 full suite once before any commit.

@@ -37,6 +37,13 @@ Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile
 
 **A prerequisite failure is not a test failure.** If `test-runner` reports a missing prerequisite from the profile — a container runtime down, a service unreachable, a missing env file — fix the environment or tell the user, and do not count it against the task's failure counter. Spending an escalation on a stopped Docker daemon wastes the ladder's most expensive rung on a non-defect.
 
+**A green gate that cannot go red is not a pass.** Check the profile's test-gate status before trusting this step:
+
+- If the profile records **no test suite**, this step proves nothing and you must not treat it as verification. Several toolchains exit 0 on an empty test run without a warning, so the loop would report every task as passing while executing zero assertions. Substitute the strongest gate the project actually has, in this order: the build and type-check commands from the profile; the lint command; and the packet's own acceptance criteria, checked by running the thing and observing the stated outcome. Say explicitly in the `loop/STATE.md` entry which gate was used, so the journal never implies tests passed when none exist.
+- If `test-runner` reports **zero tests executed** when the profile says a suite exists, that is a failure, not a pass — a test selection filter that matches nothing, or a suite that failed to load. Treat it as a step-4 failure and respin.
+
+When a project has no test suite, say so once at the start of the run and recommend that a test harness become its own task. Do not silently proceed as if the gate were real, and do not refuse to run — a project without tests is still worth building in, as long as nobody is misled about what was verified.
+
 ## 5. Review
 
 Spawn `code-reviewer` on the diff accumulated for this task (`git diff`), with the profile's Conventions section, the `[reviewer]`-tagged lessons, and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).

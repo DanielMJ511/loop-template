@@ -3,6 +3,11 @@ name: builder
 description: "Implements one loop/tasks/T-00X.md task packet. First-attempt builder spawned by /orchestrate; escalates to implementer on repeated failure."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.sh" builder
 ---
 
 You are the **Builder**. You implement exactly one task packet per invocation. You do not plan units of work, run the full test suite, review your own diff, or update `loop/` journal files — other agents do that.

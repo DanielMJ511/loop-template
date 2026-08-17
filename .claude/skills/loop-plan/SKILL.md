@@ -1,6 +1,7 @@
 ---
 name: loop-plan
 description: Generate loop/PLAN.md and loop/tasks/ for the next unit of work — a milestone, a ticket, or a prompt — grill the breakdown with the user, and record resulting decisions before any code is written. Use when the user wants to start or re-plan a unit of work, or says "/loop-plan".
+model: opus
 ---
 
 Run in the main session, never delegated to a subagent — the grilling step below is an interactive dialogue with the user that an isolated subagent cannot hold.
@@ -82,6 +83,9 @@ Clear `loop/tasks/*.md` and write fresh packets, numbering from `T-001` (numberi
 ```
 # T-00X — <title>
 Unit: <work item ref>   Status: pending
+<!-- Status is owned by /orchestrate from here on: it records the escalation
+     ladder's position there so a dead session doesn't restart it at zero. -->
+
 
 ## Description
 <what to build>

@@ -140,9 +140,19 @@ How the loop learns what to build. `/loop-plan` reads `source` and ignores the o
 Steps that run once per milestone after the last task, in order. Each one either has a command or is
 explicitly the user's to perform — a gate with neither is a gate that silently never runs.
 
-1. `<e.g. security review — run the security-review skill>`
-2. `<e.g. /retro>`
-3. `<e.g. close the tracker item, on user confirmation>`
+**A gate is a command or a human action, never a skill.** `/orchestrate` walks this list from inside
+its own run; listing `/retro` or `/loop-plan` here asks it to invoke a skill mid-skill, and the two
+sets of instructions then compete. `/retro` is what the user runs *after* `/orchestrate` returns.
+
+Replace every line below — a placeholder left here is a gate that never runs, and the security
+review is the one nobody notices is missing.
+
+1. `<e.g. security review — the project's own SAST command, or "claude -p /security-review">`
+2. `<e.g. close the tracker item, on user confirmation>`
+3. `<USER: manual smoke test of the flows this milestone touched>`
+
+`/loop-init` fills this in from what the project already has. `none — the user closes milestones
+manually` is a valid answer; a leftover placeholder is not.
 
 ---
 

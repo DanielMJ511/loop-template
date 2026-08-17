@@ -1,6 +1,7 @@
 ---
 name: loop-init
 description: Detect this project's stack, conventions, tracker and git policy, and write loop/PROFILE.md so the loop can run here without any hand-editing. Use once per project when adopting the loop, or when the user says "/loop-init". Also use to re-detect after a project's build or conventions change materially.
+model: opus
 ---
 
 Run in the main session. Detect, propose, write the profile, stop. **Never plan a milestone, write a task packet, or touch application code** — `/loop-plan` does the first two and `builder` does the third.
@@ -121,6 +122,23 @@ Then determine branch policy, whether the loop may commit at all, and the pre-co
 
 **Ask about footprint explicitly, in a shared repo:** should loop files be committed, or stay local? Default to local for any repo with other contributors — teammates seeing unexplained agent config in a PR is a real cost. Local means adding the loop paths to `.git/info/exclude`, which is per-clone and never committed, so the shared `.gitignore` is untouched.
 
+## 5b. Establish the milestone-close gates
+
+`/orchestrate` walks the profile's Milestone-close gates after the last task of a unit. **If you leave that section as template placeholders, it walks a list of placeholders and every gate silently never runs** — and the one people notice missing last is the security review, because nothing fails when it is skipped.
+
+Propose a concrete list. Start from what the project already has, then fill the gaps:
+
+- **Security review.** Look for an existing one first: a SAST step in CI (`codeql`, `semgrep`, `snyk`, `trivy`, `bandit`, `npm audit`, `dependency-check`), a scheduled workflow, or a documented process. If one exists, record that command. If none does, propose `claude -p /security-review` as the gate rather than leaving it blank — a read-only pass at the milestone boundary is the loop's only holistic look at the change set, since `code-reviewer` only ever sees one task's diff.
+- **Closing the work item.** From the tracker detected in step 4, if any. Mark it as requiring user confirmation.
+- **Anything the project's own process already requires** at a release or merge boundary — a changelog entry, a version bump, a migration check, a manual smoke test. Read `CONTRIBUTING.md` and the PR template for these rather than inventing them.
+
+Two rules on how you write them, both from the template:
+
+- **A gate is a command or a human action, never a skill.** `/orchestrate` runs these from inside its own invocation; listing `/retro` or `/loop-plan` there asks it to invoke a skill mid-skill. `/retro` is what the user runs after `/orchestrate` returns.
+- **A gate with neither a command nor a named owner is a gate that never runs.** Prefix the user's ones with `USER:` so the distinction survives.
+
+If the user wants no gates at all, record that explicitly — `none — the user closes milestones manually` — rather than leaving placeholders. An empty section and a deliberately empty section look identical six weeks later.
+
 ## 6. Greenfield: write a provisional profile instead
 
 Nothing to detect, so ask for the minimum and mark everything provisional.
@@ -151,6 +169,19 @@ Then write:
 4. `loop/STATE.md` — a header line and an adoption entry (date, mode, detected stack, work-item source).
 5. `loop/tasks/README.md` — copy `.claude/loop-templates/tasks-README.md`.
 6. If footprint is local: append `loop/` and `.claude/` to `.git/info/exclude`, then confirm with `git status --short` that the repo reads clean. Verify with `git check-ignore -v loop/PLAN.md` that the exclusion resolves to `.git/info/exclude` and not to a committed `.gitignore`.
+
+   If footprint is **committed**, exclude `loop/AUDIT.log` specifically. It is machine-local run telemetry that changes on every spawn; committing it produces conflict-prone churn in every PR and tells a teammate nothing.
+
+## 7b. Check the audit hook can run
+
+Nothing to install. Each loop agent declares the hook in its own frontmatter as a `Stop` hook, which Claude Code converts to `SubagentStop` and unregisters when the agent finishes. It appends one line to `loop/AUDIT.log` per spawn, giving `/retro` a record no agent can shape.
+
+Two things to confirm here, because both fail silently:
+
+- **`jq` or `python3` must be on PATH** — `command -v jq python3`. The script reads the hook payload with one of them and exits quietly with neither, producing an empty log that looks exactly like "nothing has run yet". If neither is present, say so now and tell the user the loop still works, just without the audit trail.
+- **`sh` must resolve.** On macOS and Linux this is free. On Windows it means Git Bash. If it isn't there, point the hook at the PowerShell twin instead — edit the `command` line in each of the five agent files to `powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.ps1" -AgentName <agent>`. This is the one sanctioned edit to a machinery file, because it is platform-specific rather than project-specific.
+
+Then tell the user to check `loop/AUDIT.log` has content after their first `/orchestrate` run. A wrong interpreter path fails silently and looks identical to an empty log.
 
 ## 8. Stop
 

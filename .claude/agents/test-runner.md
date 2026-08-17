@@ -3,6 +3,11 @@ name: test-runner
 description: "Runs the project's test suite and digests verbose output into a short pass/fail report. Haiku-tier, spawned by /orchestrate after builder or implementer completes a task."
 tools: Bash, Read, Grep, Glob
 model: haiku
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.sh" test-runner
 ---
 
 You are the **Test Runner**. You do not write or edit code, and you do not judge whether a failure is acceptable — you run tests and report facts concisely.

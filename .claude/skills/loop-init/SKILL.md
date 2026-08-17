@@ -7,11 +7,15 @@ Run in the main session. Detect, propose, write the profile, stop. **Never plan 
 
 Your entire job is to make every later stage able to work here without reading a single machinery file. If you leave a field guessed where it could have been detected, every downstream agent inherits that guess and acts on it with full confidence.
 
+**Run every shell snippet in this skill through the Bash tool.** They are POSIX, and this template gets adopted on Windows too, where the default shell is PowerShell — there `2>/dev/null` and `head` do not exist and the snippet fails as a parse error rather than as a detection result. A detection step that fails silently writes a confidently wrong profile, which is the one outcome this skill exists to prevent.
+
 ## 1. Decide the mode
 
 ```
-git -C . log --oneline -1 2>/dev/null | head -1
+git log --oneline -1
 ```
+
+An error here ("does not have any commits yet") is a result, not a problem — it means greenfield.
 
 - Output, and source files present → **brownfield**. Conventions already exist in the code, whether or not anyone wrote them down. Detect them.
 - No commits, or no source files → **greenfield**. Nothing to detect. Go to step 6.
@@ -112,8 +116,11 @@ When in doubt choose `prompt`. It is the only source that cannot be wrong, and `
 ```
 git log --oneline -20
 git symbolic-ref --short HEAD
-ls .github/pull_request_template.md .husky .pre-commit-config.yaml 2>/dev/null
 ```
+
+Then check for a PR template and commit hooks with the **Glob** tool rather than a shell listing —
+`.github/pull_request_template.md`, `.husky/**`, `.pre-commit-config.yaml`. Glob works the same on
+every platform and reports absence as an empty result instead of an error.
 
 Infer the commit message format from what's actually there — if 20 commits show `type: summary`, that's the format; if they show `[ABC-123] summary`, that's the format. Record it as a pattern with a real example.
 
@@ -150,7 +157,25 @@ Then write:
 3. `loop/PLAN.md` — a stub saying no work item is loaded and to run `/loop-plan`.
 4. `loop/STATE.md` — a header line and an adoption entry (date, mode, detected stack, work-item source).
 5. `loop/tasks/README.md` — copy `.claude/loop-templates/tasks-README.md`.
-6. If footprint is local: append `loop/` and `.claude/` to `.git/info/exclude`, then confirm with `git status --short` that the repo reads clean. Verify with `git check-ignore -v loop/PLAN.md` that the exclusion resolves to `.git/info/exclude` and not to a committed `.gitignore`.
+6. If footprint is local, **check what is already tracked before excluding anything**:
+
+   ```
+   git ls-files .claude loop
+   ```
+
+   Git exclusion applies only to untracked paths. If this prints anything, adding those paths to `.git/info/exclude` does nothing to them — and per this template's own README, any project you have used Claude Code in already has a tracked `.claude/`, so this is the common case rather than the edge one.
+
+   - **Nothing tracked** → append `loop/` and `.claude/` to `.git/info/exclude`.
+   - **Something tracked** → say so plainly and give the user the two real options: `git rm --cached -r <path>` to untrack it (a deletion in everyone else's next pull, so it is their call, not yours), or accept a committed footprint for the paths already in the repo. Do not write the exclusion and report success.
+
+   Then verify **every** path you claimed to exclude, not just one:
+
+   ```
+   git check-ignore -v loop/PLAN.md .claude/settings.json
+   git status --short
+   ```
+
+   `git status --short` must come back clean. A verification that probes `loop/PLAN.md` alone passes happily while `.claude/` sits exposed in the diff a teammate reviews — which is the precise failure the local footprint exists to prevent.
 
 ## 8. Stop
 

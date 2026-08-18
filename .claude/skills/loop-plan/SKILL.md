@@ -45,6 +45,17 @@ Restate back to them, before decomposing: the goal in one sentence, and the spec
 
 Where your re-derivation disagrees with the item, the code wins. Note the discrepancy in `loop/PLAN.md` and raise it during grilling rather than silently planning around it.
 
+**When the item you disprove is `loop/PROFILE.md` itself, correct it.** Re-deriving scope regularly disproves a profile fact, because `/loop-init` measured it once and the project moved. Leaving a known-false fact in place is the worst option available: every later agent reads the profile as settled and inherits the error with full confidence, and no downstream stage re-checks it.
+
+Three stages may write to the profile, for different reasons: `/loop-init` detects it, you correct a measured fact you disproved while planning, and `/retro` fixes what repeated friction shows to be a profile defect. Every other stage — `docs-writer` most explicitly — reports the problem and leaves the file alone.
+
+Two boundaries on that permission:
+
+- **Measured facts only** — a test count, a baseline, a command, a stated root cause, a line-number citation. Correct them in place, and mark the correction with the date and that `/loop-plan` made it, so a reader can tell it from what `/loop-init` detected. Prefer citing a key or a symbol over a line number, since the task you are about to plan will shift the lines.
+- **Never the judgment sections.** Conventions, git policy, loop budgets, work-item source, milestone-close gates are the user's, and `/retro`'s to revisit. If one of those looks wrong, say so and leave it.
+
+`docs-writer` is forbidden from touching the profile at all, and that stays true — it records what happened rather than re-deriving anything. You are correcting a fact you just disproved with evidence in hand, which is a different act.
+
 **Enumerate scope by the invariant being restored, not by the example that revealed it.** When a task is "fix instances of X", the count you write into the packet is a completeness claim, and searching for the symptom that brought the problem to your attention will under-count it every time. Search for the property instead.
 
 This has now happened in both projects the loop has run in. In one, a packet listed two lock-ordering offenders when there were three. In the other, a packet named one namespace-root violation when there were two — because planning grepped for the *misspelling* that prompted the task rather than for namespace declarations, and the second file was spelled correctly while still carrying the wrong root. Both were caught downstream, which is luck: a review stage is not a scope-enumeration tool.
@@ -58,6 +69,14 @@ Read the existing source files for the areas the work touches — the profile's 
 Break the work into concrete `T-00X` tasks. Each should be small enough for `builder` to complete and get reviewed in one pass, but large enough to be a coherent unit. Prefer a task that delivers a working slice over a task that delivers a layer.
 
 **Where a task's approach depends on how a dependency behaves internally, settle it now — while writing the packet — not later at build time.** Decompile it, read its source, ask the database for its actual plan or lock state, print what the framework actually constructed. Then state the finding in the packet as a verified fact and name how it was verified. The same claim costs a build failure if the builder has to discover it and nothing at all if the packet already answers it. A verified internal is also what lets you choose an implementation *shape* the guard can observe — a decision only planning can make.
+
+### Probes that edit the tree
+
+The strongest probes change a file — flip a compiler option, apply a candidate fix, run the suite, read what actually happens. That is legitimate and often the only way to settle a claim. **It also means this skill, which writes no application code, spends part of its run with application code modified.** Three rules:
+
+- **Revert every probe the moment it has answered its question**, before starting the next one. Not at the end of the run: at the end of each probe. What survives is the *finding* in the packet — the claim, the command, the output — never the edit.
+- **`git status` before you stop, and again after any interruption.** A probe left in the tree looks exactly like a builder's work to whatever runs next, and `/orchestrate` step 2 will hand it to `code-reviewer` as this task's diff. This is not hypothetical: a run interrupted mid-probe left a modified `tsconfig.json` behind and caught it only on resume.
+- **Record the probes you rejected, not just the one that worked.** A candidate fix you ran and disproved is worth a line in the packet, because otherwise the builder tries it. Say what it produced — "clears the compile error and yields `EventBus is not a function`" tells the builder more than "this approach is wrong".
 
 Overwrite `loop/PLAN.md`:
 
@@ -123,7 +142,18 @@ say so here rather than letting the gap surface at verification time.>
 
 Note the current highest number in the profile's decision-record directory, for later comparison.
 
-Present `loop/PLAN.md` and the task packets and stress-test them with the user. If `mattpocock-skills:grill-with-docs` is installed, ask the user to run it — it has `disable-model-invocation: true`, so it cannot be invoked from here and must not be replicated by other means. It runs a grilling session that interrogates edge cases and writes decision records only where a decision is hard to reverse, surprising without context, and the result of a real trade-off.
+Present `loop/PLAN.md` and the task packets and stress-test them with the user.
+
+**Check for `mattpocock-skills:grill-with-docs` on disk, never in your own skill listing.** It sets `disable-model-invocation: true`, which is exactly what keeps it *out* of that listing — so "it isn't in my available skills" is not evidence of anything, and treating it as evidence means the full tier is never offered to anyone. Look for the file instead:
+
+```
+ls ~/.claude/plugins/cache/*/mattpocock-skills/*/skills/engineering/grill-with-docs/SKILL.md
+```
+
+- **Found** → ask the user to run `/mattpocock-skills:grill-with-docs`. You cannot invoke it, and you must not replicate it by other means. Wait for them.
+- **Not found, or the glob is inconclusive** → say which you got and offer the short form below rather than announcing it isn't installed. A plugin can live at a path this glob doesn't cover, and the user knows what they have.
+
+The full session interrogates edge cases and writes decision records only where a decision is hard to reverse, surprising without context, and the result of a real trade-off.
 
 Wait for grilling to reach its own definition of done — the decision tree resolved, nothing silently assumed — before continuing.
 

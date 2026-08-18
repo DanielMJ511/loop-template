@@ -167,8 +167,14 @@ tiers:
 
 If you want the full session available everywhere, install the plugin at **user scope** via
 `/plugin`, not project scope. A plugin installed with project scope is recorded against that one
-project path and will not appear in your next repo — which is the usual reason grilling seems to
-"disappear" when you adopt the loop somewhere new.
+project path and will not appear in your next repo.
+
+**If `/loop-plan` tells you the plugin isn't installed, check before believing it.** `/loop-plan` now
+looks for the plugin's file on disk, because the obvious test — "is it in my available skills?" —
+cannot work: `disable-model-invocation: true` is precisely what keeps it out of that listing. Until
+this was fixed, the answer was always "not installed" and the full tier was never once offered, on a
+machine where the plugin was sitting at user scope the whole time. The disk check covers the usual
+path; if yours differs, tell it so, and it will take your word over its own glob.
 
 Either tier satisfies step 4. `/loop-plan` records which one ran in `loop/PLAN.md`, so the journal
 never implies a full session happened when it didn't.

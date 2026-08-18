@@ -219,16 +219,30 @@ Then write:
 
    If footprint is **committed**, exclude `loop/AUDIT.log` specifically. It is machine-local run telemetry that changes on every spawn; committing it produces conflict-prone churn in every PR and tells a teammate nothing.
 
-## 7b. Check the audit hook can run
+## 7b. Check the hooks can run
 
-Nothing to install. Each loop agent declares the hook in its own frontmatter as a `Stop` hook, which Claude Code converts to `SubagentStop` and unregisters when the agent finishes. It appends one line to `loop/AUDIT.log` per spawn, giving `/retro` a record no agent can shape.
+Nothing to install, and no settings file is touched. Three hooks ship, all declared in frontmatter:
+
+- **`SubagentStop`** — each loop agent declares it as a `Stop` hook, which Claude Code converts and unregisters when the agent finishes. Appends one line to `loop/AUDIT.log` per spawn, giving `/retro` a record no agent can shape.
+- **`Stop`** — `/orchestrate` declares the loop guard, which warns the user when a task is over its spawn budget, blocked, or at its final attempt. Advisory; it never blocks stopping.
+- **`PreCompact`** — `/orchestrate` declares the checkpoint writer, which writes `loop/HANDOFF.md` from durable state before context is compacted.
+
+The last two register when `/orchestrate` is invoked and stay registered for that session. Set the profile's **Loop budgets** section while you are here — the guard falls back to 10 spawns per task if the field is missing, which is a reasonable default but not this project's answer.
 
 Two things to confirm here, because both fail silently:
 
 - **`jq` or `python3` must be on PATH** — `command -v jq python3`. The script reads the hook payload with one of them and exits quietly with neither, producing an empty log that looks exactly like "nothing has run yet". If neither is present, say so now and tell the user the loop still works, just without the audit trail.
 - **On Windows, check for Git Bash — not for `sh` on the Windows `PATH`.** Claude Code runs a hook `command` through bash by default, and falls back to PowerShell on Windows only when Git Bash is *not installed*. So the question that decides whether the shipped `sh` command works is "is Git Bash present", and the two answers come apart: on a stock Windows machine `sh` is absent from the Windows `PATH` while Git Bash is installed and `sh` resolves fine inside the shell the hook actually runs in. Testing the `PATH` sends the user through a pointless multi-file edit.
 
-  Check with `git --exec-path` — if it resolves under a Git installation, Git Bash is there and the default `sh` command needs no change. On a Windows machine with no Git Bash, hooks run under PowerShell, so point them at the PowerShell twin: edit the `command` line in **every agent file that declares the hook** to `powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.ps1" -AgentName <agent>`. Derive that file list rather than recalling it — `grep -l audit-subagent .claude/agents/*.md` — because editing all but one leaves a hook silently pointing at a shell that will not run it, and a partial audit log looks like a partial run. This is the one sanctioned edit to a machinery file, because it is platform-specific rather than project-specific.
+  Check with `git --exec-path` — if it resolves under a Git installation, Git Bash is there and the default `sh` commands need no change. On a Windows machine with no Git Bash, hooks run under PowerShell, so point every one of them at its `.ps1` twin. Each script has one, and the argument shape differs:
+
+  ```
+  powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.ps1" -AgentName <agent>
+  powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/loop-guard.ps1"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/precompact-checkpoint.ps1"
+  ```
+
+  Derive the file list rather than recalling it — `grep -rl 'hooks/' .claude/agents .claude/skills` — because editing all but one leaves a hook silently pointing at a shell that will not run it, and a partial audit log looks identical to a partial run. This is the one sanctioned edit to a machinery file, because it is platform-specific rather than project-specific.
 
   Never write bare `bash` into a hook command on Windows: it resolves to the WSL stub in `WindowsApps`, which fails with `execvpe(/bin/bash) failed` when no distro is installed — or worse, succeeds against a completely different view of the filesystem.
 

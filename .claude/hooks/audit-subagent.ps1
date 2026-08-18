@@ -1,6 +1,6 @@
 param([string]$AgentName = '')
 
-# Loop audit hook — SubagentStop (Windows / PowerShell).
+# Loop audit hook - SubagentStop (Windows / PowerShell).
 #
 # Declared as a `Stop` hook in each loop agent's frontmatter; Claude Code
 # converts that to SubagentStop and unregisters it when the agent finishes.
@@ -13,7 +13,7 @@ param([string]$AgentName = '')
 # is written by the harness as each spawn ends, so it survives a session that
 # dies mid-task and cannot be shaped by the agent describing itself.
 #
-# Structural only — who ran, when, on what, with what verdict token. The
+# Structural only - who ran, when, on what, with what verdict token. The
 # narrative stays in STATE.md. Keeping content out means the log never leaks a
 # long report and never needs truncating.
 #
@@ -51,7 +51,7 @@ try {
     # Two views of the message. $flat keeps the original characters so T-003
     # stays intact; $norm reduces every non-alphanumeric to a space so a token
     # can be matched on whole-word boundaries with a plain substring test. The
-    # .sh twin performs exactly this normalization — the two must agree on the
+    # .sh twin performs exactly this normalization - the two must agree on the
     # same payload, or the log's verdict column becomes platform-dependent.
     $flat = ($msg -replace '\s+', ' ').Trim()
     $norm = (($msg -replace '[^A-Za-z0-9]', ' ') -replace '\s+', ' ').Trim()

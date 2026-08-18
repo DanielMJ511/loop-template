@@ -65,6 +65,21 @@ verify. Say *why*, so a later reader can tell a considered "no" from an unfilled
 - **Logs**: `<where the app's output goes — a file, stdout, a container log command>`
 - **Confirm it is running current code**: `<how — a build stamp, a version endpoint, or "restart it">`
 
+### Browser observation
+
+`verifier` has no browser of its own — it drives whatever harness **this project already has**, through
+its shell. Nothing is installed for it. These two fields decide whether a UI acceptance criterion can be
+observed here at all, so a blank one silently converts "we cannot check this" into "this passed".
+
+- **Browser harness**: `<playwright | cypress | puppeteer | webdriverio | none>` — Evidence:
+  `<config path>`. Run one spec headless: `<the exact verified invocation>`
+- **UI-observable criteria**: `<verifier drives the harness above | none — this app has no UI | not
+  verifiable here — no harness, so UI criteria are the user's to confirm>`
+
+Record `none` as a real answer with its reason. Where there is no harness and the app *does* have a UI,
+a criterion that needs a rendered page comes back `NOT VERIFIED` rather than being skipped quietly —
+that is the honest outcome, and it is the signal that a harness deserves its own task.
+
 ---
 
 ## Conventions

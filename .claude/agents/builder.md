@@ -3,6 +3,7 @@ name: builder
 description: "Implements one loop/tasks/T-00X.md task packet. First-attempt builder spawned by /orchestrate; escalates to implementer on repeated failure."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
+effort: medium
 hooks:
   Stop:
     - hooks:

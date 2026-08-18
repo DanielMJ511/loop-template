@@ -10,8 +10,13 @@ Every lesson carries one or more audience tags. `/orchestrate` and `/loop-plan` 
 - `[builder]` — `builder` and `implementer`: how to write the code and its tests.
 - `[reviewer]` — `code-reviewer`: what to look for in a diff.
 - `[docs]` — `docs-writer`: what must be true of a durable document (a decision record, a doc comment, a journal entry).
+- `[testing]` — `test-runner`: how this project's suite misreports — a runner that exits 0 on nothing, a cache that fakes a pass, a prerequisite whose failure reads like a code bug.
+- `[verifier]` — `verifier`: what the running app does that its tests don't show, and what this project's stack makes hard to observe.
+- `[security]` — `security-auditor`: the shapes this codebase gets wrong, and which of its trust boundaries are worth re-reading every unit.
 
 A lesson with no tag is a bug in the entry, not a lesson for everyone. Add the tags it needs.
+
+A lesson may carry several tags. It is written **once**, and each stage receives only the entries tagged for it — never a copy. Splitting this file per audience would duplicate the majority of it, and the first thing to drift would be the lesson below about facts that drift.
 
 ## Seeded lessons
 
@@ -24,7 +29,9 @@ Where a seeded lesson names a specific tool, the **rule** is the lesson and the 
 
 ## Retired lessons
 
-A lesson is **retired** when its content becomes permanent instruction text in a skill or agent file, or when a seed proves inapplicable here. A retired lesson is replaced in place by a one-line pointer. It is never deleted outright: the pointer is what stops a future `/retro` from re-deriving the same lesson and re-adding it.
+A lesson is **retired** when its content becomes permanent instruction text in a skill or agent file, or when a seed proves inapplicable here. `/retro` moves it to `loop/lessons-archive.md` as a one-line pointer. It is never deleted outright: the pointer is what stops a future `/retro` from re-deriving the same lesson and re-adding it.
+
+The archive exists so that job costs nothing at spawn time. A retired lesson has no audience — its content is either already permanent instruction text or does not apply here — so leaving it in this file made every agent pay to read something none of them could act on, forever. `/retro` reads the archive; nothing else does.
 
 ## Seed (inherited on adoption)
 

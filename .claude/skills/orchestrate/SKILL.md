@@ -24,7 +24,9 @@ Three requirements, in every spawn prompt:
 
 If `loop/AUDIT.log` exists, the `SubagentStop` hook is installed and each spawn appends a line to it as it ends. You do not write to that file and do not need to read it during a run — it exists for `/retro`, and for reconstructing a run whose session died. Its one use here: if you are resuming and `loop/HANDOFF.md` is absent or stale, `tail` it to see which agents actually ran for the in-flight task, which is more reliable than the transcript for a session that was interrupted.
 
-If `loop/HANDOFF.md` has content newer than the last `STATE.md` entry, read it and resume from the task/stage it describes instead of restarting from `loop/PLAN.md`'s first unchecked task.
+If `loop/HANDOFF.md` exists and reads `Status: active`, resume from the task and stage it describes instead of restarting from `loop/PLAN.md`'s first unchecked task. Rewrite that line to `Status: consumed (resumed <ISO-8601 timestamp>)` as you resume.
+
+**Decide this on the status field, never by comparing dates.** `/loop-handoff` appends its own entry to `STATE.md` as its final act, so a checkpoint can never be "newer than the last journal entry" — the test it used to face was one it always failed. Journal entries are date-granular anyway. A checkpoint left `active` after a resume fails the other way: it gets replayed onto a task that has since moved on.
 
 If `loop/PLAN.md` has no work item loaded or no tasks, stop and tell the user to run `/loop-plan` first.
 
@@ -33,6 +35,8 @@ If `loop/PLAN.md` has no work item loaded or no tasks, stop and tell the user to
 ## 2. Pick the next task
 
 Take the next unchecked (`- [ ]`) task in `loop/PLAN.md` order. Read its full packet at `loop/tasks/T-00X.md`.
+
+**A task line is one whose checkbox is followed by a `T-00X` id.** `loop/PLAN.md`'s `## Verification` list uses the same checkbox syntax in the same file, so matching on the checkbox alone hands you a verification scenario as though it were a task — and step 8 checks those boxes off too, which makes a completed one indistinguishable from a finished task.
 
 **Record the tree's current commit as this task's review base** — `git rev-parse HEAD` — before spawning anything. Step 5 diffs against it.
 
@@ -93,7 +97,18 @@ This is the only stage that tests the application rather than the tests. A green
 
 ## 5. Review
 
-Spawn `code-reviewer` on this task's diff — `git diff <the base ref recorded in step 2>`, never a bare `git diff` — with the profile's Conventions section, the `[reviewer]`-tagged lessons, the out-of-scope file list from step 2 if the tree was dirty, and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).
+Produce the diff first. `git diff` does not show untracked files, so a task that **added** files produces an empty-looking diff and gets reviewed as though it changed nothing:
+
+```
+NEW=$(git ls-files --others --exclude-standard)   # files this task created
+git add -N -- $NEW        # -N records intent to add; it does not stage content
+git diff <base>
+git reset -q -- $NEW      # undo only those marks
+```
+
+Scope both commands to `$NEW`, never to `.` — a bare `git reset` unstages whatever the user had staged, and losing someone's index to a review step is not a trade the loop gets to make.
+
+Spawn `code-reviewer` on that diff — `git diff <the base ref recorded in step 2>`, never a bare `git diff` — with the profile's Conventions section, the `[reviewer]`-tagged lessons, the out-of-scope file list from step 2 if the tree was dirty, and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).
 
 Without that note, `code-reviewer` will reasonably flag a diff with new behavior and no tests as a critical finding even when testing is a deliberate, separate, already-planned task. That happened in the loop's origin project and cost an extra review round for a non-defect. Include it on every spawn for a unit with a dedicated test task — don't remember it ad hoc per task.
 
@@ -123,7 +138,15 @@ Only if the profile's Git section permits the loop to commit. If it says the use
 
 If `loop/PLAN.md` still has unchecked tasks, return to step 2.
 
-If all tasks are checked off, stop and tell the user the unit's implementation is complete.
+If all tasks are checked off, tell the user the unit's implementation is complete. Then walk `loop/PLAN.md`'s own `## Verification` list, **before** the profile's close gates.
+
+### Walk the unit's verification list
+
+These are the observable scenarios `/loop-plan` recorded as the definition of done for the whole unit — what makes it falsifiable rather than merely finished. Nothing has checked them: `docs-writer` checks off tasks, and the profile's close gates are a different list, so today they sit unchecked forever and the step reads as skipped because it was.
+
+For each item: spawn `verifier` where it is observable against the running app, `test-runner` where a test covers it, or say plainly that it is the user's to confirm and ask. Then check it off, or leave it unchecked with a one-line reason.
+
+**An unchecked item at the end of a unit is a result, not an oversight** — it records exactly what the unit did not prove, which is the most useful thing the plan carries into the next one. Do not mark an item verified because the tasks all passed: that is what the item is testing for, and treating it as proof turns the list into a restatement of "the work is done".
 
 **Then spawn `security-auditor` on the unit's cumulative change set** — the range from the commit the unit started at to `HEAD`, plus the working tree if the loop hasn't committed. Give it the unit's goal from `loop/PLAN.md` and the profile's Architecture section.
 

@@ -144,6 +144,8 @@ Infer the commit message format from what's actually there — if 20 commits sho
 
 Then determine branch policy, whether the loop may commit at all, and the pre-commit gate.
 
+Then fill in the Milestone-close gates. The security gate is not optional and not a placeholder: record `security-auditor`, or the project's own security tooling if it has some it trusts more. A gate left as an example string is a gate that silently never runs, and this is the only stage that sees a unit whole.
+
 **Ask about footprint explicitly, in a shared repo:** should loop files be committed, or stay local? Default to local for any repo with other contributors — teammates seeing unexplained agent config in a PR is a real cost. Local means adding the loop paths to `.git/info/exclude`, which is per-clone and never committed, so the shared `.gitignore` is untouched.
 
 ## 6. Greenfield: write a provisional profile instead

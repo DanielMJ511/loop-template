@@ -158,6 +158,8 @@ Do not mark an item verified on the strength of the tasks having passed. Every t
 
 Then walk the profile's Milestone-close gates in order, doing the ones that have commands and prompting the user for the ones that are theirs.
 
+**The security gate gets the whole unit, not the last task.** Spawn `security-auditor` with the diff from the `@base` recorded on the *first* task in `loop/PLAN.md` through to the current tree — the same `git add -N` recipe step 5 uses, so files the unit created are in it. Reviewing only the final task here would miss the entire class of defect this stage exists for: the check one task added and another routed around, the secret introduced in one and logged in another. Pass its findings into the close entry, and treat a `critical` finding as work for this unit rather than a follow-up item.
+
 Once the user reports the outcome of any gate that was theirs, append a close entry to `loop/STATE.md` recording it: unit, item ref, **each verification item with its outcome, including the ones left unconfirmed and why**, and the gate findings or "no findings". Do this even though the loop has ended: no `docs-writer` runs after the last task, so without this step the journal's final entry reads "remaining steps are the user's" forever and both the gates and the verification walk look skipped.
 
 Any deferred work from this unit becomes a follow-up item here, under the rules below.

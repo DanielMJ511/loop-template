@@ -157,7 +157,10 @@ How the loop learns what to build. `/loop-plan` reads `source` and ignores the o
 Steps that run once per milestone after the last task, in order. Each one either has a command or is
 explicitly the user's to perform — a gate with neither is a gate that silently never runs.
 
-1. `<e.g. security review — run the security-review skill>`
+1. **Security audit** — spawn the `security-auditor` agent over the unit's full diff. Substitute
+   your own security tooling here if the project has some it trusts more, but do not leave this
+   line empty: `code-reviewer` looks at one task at a time and structurally cannot see a defect
+   that spans two.
 2. `<e.g. /retro>`
 3. `<e.g. close the tracker item, on user confirmation>`
 

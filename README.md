@@ -14,7 +14,7 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-15 files, in three subfolders (`agents/`, `skills/`, `loop-templates/`). None of them is a
+16 files, in three subfolders (`agents/`, `skills/`, `loop-templates/`). None of them is a
 `settings.json`, so your own settings are never touched.
 
 **If the project has no `.claude/` folder yet** — copy the whole folder in:
@@ -40,7 +40,7 @@ Note the `/.` and the `*`. Without them, `cp -r src/.claude .` copies the folder
 existing one and you get `.claude/.claude` — broken, and silently so.
 
 **Watch for name collisions.** If the project already defines an agent named `builder`,
-`code-reviewer`, `docs-writer`, `implementer`, `qa`, `test-runner` or `teacher`, or a skill named
+`code-reviewer`, `docs-writer`, `implementer`, `qa`, `security-auditor`, `test-runner` or `teacher`, or a skill named
 `loop-init`, `loop-plan`, `orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or
 skip those rather than overwriting a project's own tuned agents with these generic ones.
 

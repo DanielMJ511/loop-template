@@ -170,6 +170,24 @@ How the loop learns what to build. `/loop-plan` reads `source` and ignores the o
 
 ---
 
+## Loop budgets
+
+Ceilings the `Stop` hook checks when the session tries to stop. They are project policy, not
+machinery, which is why they live here rather than in `.claude/`.
+
+The guard is **advisory**: it surfaces a warning and never prevents stopping. Every skill is a
+foreground invocation you are sitting in front of, so a hook that blocked would be a foot-gun rather
+than a guardrail.
+
+- **Max spawns per task**: `<n — default 10 if this line is missing or unparseable>`. A clean task
+  costs 4-5 spawns; one that fails twice and escalates costs roughly 9. A task past 10 is either
+  stuck in a respin cycle or was decomposed too large, and both are worth seeing before you walk away.
+- **Max tasks per `/orchestrate` run**: `<n, or "unbounded — the plan's task list is the limit">`.
+  `/orchestrate` walks a finite list and stops, so this is a planning ceiling rather than an enforced
+  one — the guard does not check it, because a run has no durable boundary it could read.
+
+---
+
 ## Milestone-close gates
 
 Steps that run once per milestone after the last task, in order. Each one either has a command or is

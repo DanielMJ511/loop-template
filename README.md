@@ -14,9 +14,10 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-18 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
-`settings.json`, so copying the template never touches your own settings — including the two scripts
-in `hooks/`, which the agents register themselves. See [The audit hook](#the-audit-hook).
+22 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
+`settings.json`, so copying the template never touches your own settings — including the six scripts
+in `hooks/`, which the agents and `/orchestrate` register themselves in their own frontmatter. See
+[The audit hook](#the-audit-hook) and [the loop guard](#the-loop-guard-and-the-compaction-checkpoint).
 
 **If the project has no `.claude/` folder yet** — copy the whole folder in:
 
@@ -238,24 +239,56 @@ Each of those agents ends its report with a `VERDICT: <token>` line, which is wh
 Scanning the report's prose is only a fallback, and a poor one: it can't read a negation, so
 "I am not APPROVED-ing this yet" logs as `APPROVED`.
 
-Two things it needs, both of which fail silently:
+Two things all three hooks need, both of which fail silently:
 
 - **`jq` or `python3` on PATH**, to read the hook payload. With neither, you get an empty log that
   looks identical to "nothing has run yet".
 - **Git Bash, on Windows.** Claude Code runs hook commands through bash, falling back to PowerShell
   on Windows only when Git Bash isn't installed — so the shipped `sh` command works whenever Git
   Bash is present, *even though `sh` is not on the Windows `PATH`*. Don't test the `PATH`; test for
-  Git Bash. Without it, point the `command` line at `audit-subagent.ps1` in every agent file that
-  declares the hook — get that list from `grep -l audit-subagent .claude/agents/*.md` rather than
-  from memory, since editing all but one leaves a hook that silently never fires. That's the one
-  sanctioned edit to a machinery file, because it's platform-specific rather than project-specific.
+  Git Bash. Without it, point each `command` line at the `.ps1` twin — get the full list from
+  `grep -rl 'hooks/' .claude/agents .claude/skills` rather than from memory, since editing all but
+  one leaves a hook that silently never fires. That's the one sanctioned edit to a machinery file,
+  because it's platform-specific rather than project-specific.
 
 Check the log has content after your first `/orchestrate` run.
 
-**What it deliberately isn't:** a `Stop` hook. Nic's loop has one because his runs unattended at
-22:00 and something has to stop a runaway. Every skill here is a foreground invocation, the
-escalation ladder already caps at three attempts per task, and the task list is finite — so a hook
-that blocks stopping would be a foot-gun in a session you're sitting in front of.
+## The loop guard and the compaction checkpoint
+
+Two more hooks, declared in `/orchestrate`'s own skill frontmatter rather than an agent's — so they
+register when you run `/orchestrate` and cover the whole session. Still no `settings.json`.
+
+**`Stop` → loop guard.** When the session tries to stop, it checks the durable state against the
+budgets in your profile and warns about a task that burned more spawns than allowed, a task the
+ladder gave up on, and a task sitting at its final attempt.
+
+It is **advisory and never blocks.** Exit code 2 on a `Stop` hook prevents Claude from stopping,
+which in a foreground session you're sitting in front of is a foot-gun rather than a guardrail — so
+the guard exits 0 and speaks through `systemMessage`, the one documented route to you from a
+non-blocking hook. (A hook that "warns" by echoing to stdout or stderr is invisible: on exit 0 both
+go to the debug log and nowhere else.) When nothing is over budget it prints nothing at all, which is
+what makes it safe to leave registered for a whole session.
+
+**`PreCompact` → checkpoint.** Fires immediately before the orchestrator's context is compacted —
+the one moment no agent can anticipate from inside its own turn, and exactly when it loses the
+working detail it hasn't flushed.
+
+It never reads the transcript, because it doesn't need to. Everything a resume needs is already on
+disk:
+
+| Field | Derived from |
+|---|---|
+| In-flight task | first unchecked `T-00X` in `PLAN.md` whose packet isn't `blocked` |
+| Attempt counter | that packet's own `Status:` line, verbatim |
+| Stage, last verdicts | the last spawns for that task in `AUDIT.log` |
+| Uncommitted changes | `git status --short` |
+
+It writes the same `loop/HANDOFF.md` shape `/loop-handoff` writes, `Status: active` included, so
+`/orchestrate` resumes from a compaction-written checkpoint by exactly the same path as a
+hand-written one. There is no second resume mechanism.
+
+The one thing it won't claim is **tree state** — whether a change is half-applied is a judgment, and
+a shell script has no business making it. That field says so and tells you to run `git diff`.
 
 ## Working in someone else's repo
 

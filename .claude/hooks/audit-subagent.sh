@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Loop audit hook — SubagentStop (POSIX). Counterpart of audit-subagent.ps1;
+# Loop audit hook - SubagentStop (POSIX). Counterpart of audit-subagent.ps1;
 # see that file's header for what this log is for and why it is structural only.
 #
 # Takes the calling agent's name as $1, used only if the payload omits
@@ -9,7 +9,7 @@
 # stopping*, so a crash here would hang the loop rather than lose a log line.
 #
 # Needs jq or python3 to read the hook payload. If neither is present it exits
-# silently — the loop still works, it just has no audit trail.
+# silently - the loop still works, it just has no audit trail.
 
 raw=$(cat)
 [ -n "$raw" ] || exit 0
@@ -41,7 +41,7 @@ msg=$(json_get last_assistant_message)
 # Two views of the message. `flat` keeps the original characters so T-003 stays
 # intact; `norm` reduces every non-alphanumeric to a space so a token can be
 # matched on whole-word boundaries with a plain substring test. The .ps1 twin
-# performs exactly this normalization — the two must agree byte for byte on the
+# performs exactly this normalization - the two must agree byte for byte on the
 # same payload, or the log's verdict column becomes platform-dependent.
 flat=$(printf '%s' "$msg" | tr '\n\r\t' '   ' | tr -s ' ')
 norm=$(printf '%s' "$msg" | tr -c 'A-Za-z0-9' ' ' | tr -s ' ')

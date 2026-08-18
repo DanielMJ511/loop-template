@@ -3,6 +3,15 @@ name: orchestrate
 description: Drive one pass of the task loop, spawning builder, test-runner, verifier, code-reviewer and docs-writer for each task in loop/PLAN.md until the tasks are exhausted or a task gets stuck. Use when the user wants to implement the next planned task(s), or says "/orchestrate".
 model: sonnet
 effort: medium
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/loop-guard.sh"
+  PreCompact:
+    - hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/precompact-checkpoint.sh"
 ---
 
 Run in the main session. Write no feature code directly — every code change goes through `builder` or `implementer`. Never scheduled or backgrounded: this is a single foreground invocation that processes tasks until done or blocked, then returns control to the user.
@@ -25,7 +34,14 @@ Three requirements, in every spawn prompt:
 
 If `loop/AUDIT.log` exists, the `SubagentStop` hook is installed and each spawn appends a line to it as it ends. You do not write to that file and do not need to read it during a run — it exists for `/retro`, and for reconstructing a run whose session died. Its one use here: if you are resuming and `loop/HANDOFF.md` is absent or stale, `tail` it to see which agents actually ran for the in-flight task, which is more reliable than the transcript for a session that was interrupted.
 
+**Two hooks register when you are invoked**, declared in this skill's own frontmatter, and stay registered for the rest of the session. Neither needs anything installed and neither touches a settings file:
+
+- `Stop` → `loop-guard`. When the session tries to stop, it reads the profile's Loop budgets, the task packets and `loop/AUDIT.log`, and warns the user about a task over its spawn budget, a blocked task, or one at its final attempt. **Advisory only** — it exits 0 and speaks through `systemMessage`, because a `Stop` hook that blocks would trap a foreground session. You do not invoke it and do not need to react to it; it exists so a runaway is visible to the *user* at the moment they would otherwise walk away.
+- `PreCompact` → `precompact-checkpoint`. Writes `loop/HANDOFF.md` from durable state before your context is compacted. This is the reason you can afford to lose context mid-task.
+
 If `loop/HANDOFF.md` exists and reads `Status: active`, resume from the task and stage it describes instead of restarting from `loop/PLAN.md`'s first unchecked task. Rewrite that line to `Status: consumed (resumed <ISO-8601 timestamp>)` as you resume.
+
+A checkpoint written by the hook says so on its `Written by:` line, and resumes by exactly this path — there is no second mechanism. Read it slightly differently, though: it derives the stage from the last `loop/AUDIT.log` spawn and deliberately does **not** assess whether the tree is half-applied, because a shell script cannot judge that. Run `git status` and `git diff` before trusting a hook-written checkpoint's picture of the working tree. A checkpoint from `/loop-handoff` has had an agent look at the tree; this one has not.
 
 **Decide this on the status field, never by comparing dates.** `/loop-handoff` appends its own entry to `STATE.md` as its final act, so a checkpoint can never be "newer than the last journal entry" — the test it used to face was one it always failed. Journal entries are date-granular anyway. A checkpoint left `active` after a resume fails the other way: it gets replayed onto a task that has since moved on.
 

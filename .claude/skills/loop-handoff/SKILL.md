@@ -5,6 +5,10 @@ model: sonnet
 effort: low
 ---
 
+**This file has two writers.** You write it when a session ends deliberately; the `PreCompact` hook writes it automatically when the orchestrator's context is about to be compacted. Both produce the same shape, including `Status: active`, so `/orchestrate` resumes from either by the same path.
+
+The difference is what each can know. The hook derives everything from durable state — the plan, the packet's `Status:` line, `loop/AUDIT.log`, `git status` — and marks itself on a `Written by:` line. It cannot judge whether the tree is coherent, so it says so rather than guessing. **You can**, and that is the field worth your attention below. Overwriting a hook-written checkpoint with a considered one is an improvement, not a conflict.
+
 Gather the current loop state:
 
 - Which task (`T-00X`) is in flight, and which stage it's at — `builder`, `test-runner`, `verifier`, `code-reviewer`, `docs-writer`, `implementer` if the ladder escalated, `security-auditor` if the unit was closing, or blocked. Name the stage the session actually died in; `/orchestrate` resumes from the stage you write here, so a stage this list cannot express becomes a stage the loop silently re-runs or skips.

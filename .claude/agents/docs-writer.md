@@ -3,6 +3,7 @@ name: docs-writer
 description: "Records what happened after a task completes: updates loop/STATE.md, checks off loop/PLAN.md, and drafts a decision record only when a genuinely new architectural decision surfaced. Spawned by /orchestrate after code-reviewer approves."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
+effort: low
 hooks:
   Stop:
     - hooks:

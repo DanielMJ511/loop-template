@@ -2,11 +2,14 @@
 name: retro
 description: Extract recurring friction from loop/STATE.md and the unit's own commits into actionable, audience-tagged constraints in loop/LESSONS.md, and retire lessons that have since become permanent skill text or proved inapplicable. Use after an /orchestrate run completes, or when the user says "/retro".
 model: opus
+effort: high
 ---
 
 ## 1. Read every record of the unit
 
 Read `loop/STATE.md` from the most recent `boundary` marker onward — the entries `/loop-plan` and `/orchestrate` wrote for the unit just completed. Note the work item's reference.
+
+Read `loop/lessons-archive.md` too, if it exists. It holds the pointers for lessons retired in earlier units, and you are its only reader. Check it before adding anything in step 5: a lesson you are about to write because this unit re-learned it may already be there, retired because its content became permanent instruction text — in which case the friction is a sign that text isn't working, which is a different and more useful finding than re-adding the lesson.
 
 Then read what the unit actually did, not only what its agents said they did. Find the commits: `git log --oneline` filtered by the item reference if the profile's commit format embeds one, otherwise by date since the boundary entry. Read the diffs of anything whose journal entry is vague, contested, or describes a revert.
 
@@ -44,15 +47,23 @@ Phrase each as an actionable constraint — something the receiving agent can ac
 
 ## 3. Tag each new lesson by audience
 
-Every entry leads with its tags: `[planning]`, `[builder]`, `[reviewer]`, `[docs]`. `/orchestrate` and `/loop-plan` deliver each agent only its own slice, so an untagged lesson reaches nobody and a wrongly-tagged one reaches an agent that cannot act on it.
+Every entry leads with its tags: `[planning]`, `[builder]`, `[reviewer]`, `[docs]`, `[testing]`, `[verifier]`, `[security]`. `/orchestrate` and `/loop-plan` deliver each agent only its own slice, so an untagged lesson reaches nobody and a wrongly-tagged one reaches an agent that cannot act on it.
 
 Ask specifically whether the lesson is aimed at *planning*. A constraint about what a task packet must establish before implementation starts belongs to `/loop-plan`, and tagging it `[builder]` out of habit hands it to the one stage that can no longer act on it.
+
+The last three tags are the easiest to forget, because their stages report and do not build — but they are where a unit's most repeatable friction shows up. A suite that misreports, a runtime behaviour this stack makes hard to observe, a trust boundary that keeps needing a second look: those belong to `test-runner`, `verifier` and `security-auditor` respectively, and a lesson about them tagged `[builder]` reaches a stage that will never run that check.
+
+Tag for every audience that can act, and write the lesson once. Two near-copies aimed at two stages is the drift this file's own lessons warn about.
 
 Do not add `[seed]` to a new lesson — that tag marks only what was inherited on adoption.
 
 ## 4. Retire what no longer belongs
 
-Two cases, both replacing the entry in place with a one-line pointer:
+Two cases. In both, **remove the entry from `loop/LESSONS.md` and append its one-line pointer to `loop/lessons-archive.md`** (create that file if it doesn't exist). You are the only reader of the archive — step 1 above reads it, no spawn ever receives it.
+
+Moving rather than leaving in place is the point. A retired lesson has no audience by definition: its content is either already permanent instruction text somewhere in `.claude/`, or it cannot apply here. Left in `loop/LESSONS.md` it is read on every `/orchestrate` run for the life of the project, by agents that can act on none of it. The pointer still does its one job — stopping a future `/retro` re-deriving the same lesson — from the archive.
+
+The two pointer shapes:
 
 **Promoted to instruction text.** If a lesson's content is now permanent text in `.claude/skills/` or `.claude/agents/` — applied automatically rather than remembered — it is duplication, and a fact worth stating twice will drift.
 
@@ -68,9 +79,9 @@ Two cases, both replacing the entry in place with a one-line pointer:
 
 Be strict about the difference between "hasn't happened yet" and "cannot happen". A seed retired early is a lesson re-learned the expensive way.
 
-Keep the pointer rather than deleting: it's what stops a future `/retro` from re-deriving the same lesson and re-adding it in full.
+Archive the pointer rather than deleting it: it's what stops a future `/retro` from re-deriving the same lesson and re-adding it in full.
 
-These are the only edits permitted to a prior entry, alongside correcting or adding audience tags. Never rewrite a prior lesson's substance, and never rewrite `loop/STATE.md` history.
+Retiring and re-tagging are the only edits permitted to a prior entry. Never rewrite a prior lesson's substance, and never rewrite `loop/STATE.md` history.
 
 ## 5. Append
 

@@ -3,6 +3,7 @@ name: code-reviewer
 description: "Reviews a git diff against this project's conventions and the loop's retro-earned checks. Spawned by /orchestrate after test-runner passes; never edits code, only reports findings."
 tools: Read, Bash, Glob, Grep
 model: sonnet
+effort: medium
 hooks:
   Stop:
     - hooks:

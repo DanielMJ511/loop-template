@@ -2,13 +2,14 @@
 name: loop-handoff
 description: Overwrite loop/HANDOFF.md with a checkpoint of the in-flight task, stage and next action, so /orchestrate can resume instead of restarting. Use when ending a session mid-unit, or when the user says "/loop-handoff". Distinct from a general-purpose conversation summary — this is a loop/-specific checkpoint.
 model: sonnet
+effort: low
 ---
 
 Gather the current loop state:
 
-- Which task (`T-00X`) is in flight, and which stage it's at (`builder`, `test-runner`, `code-reviewer`, `docs-writer`, or blocked/escalated).
+- Which task (`T-00X`) is in flight, and which stage it's at — `builder`, `test-runner`, `verifier`, `code-reviewer`, `docs-writer`, `implementer` if the ladder escalated, `security-auditor` if the unit was closing, or blocked. Name the stage the session actually died in; `/orchestrate` resumes from the stage you write here, so a stage this list cannot express becomes a stage the loop silently re-runs or skips.
 - The failure counter for that task, if any respins have happened — without it, a resumed session restarts the escalation ladder from zero and can burn two more attempts on a task already at its limit. **Read it from the packet's `Status:` line** (`/orchestrate` persists it there on every change) rather than from the transcript, and copy that line verbatim. If the transcript and the packet disagree, the packet is the record that survived.
-- The last test result (pass/fail, which files or suites).
+- The last test result (pass/fail, which files or suites), and the last runtime verification verdict if step 4b ran. Without the second, a resume re-runs verification it already passed, or skips one it never reached.
 - `git status --short` output.
 - One-line description of the next action when work resumes.
 
@@ -28,13 +29,16 @@ Status: active
 <T-00X — title>
 
 ## Stage
-<builder | test-runner | code-reviewer | docs-writer | blocked>
+<builder | test-runner | verifier | code-reviewer | docs-writer | implementer | security-auditor | blocked>
 
 ## Failure counter
 <n of 2 before escalation, or "0 — no respins">
 
 ## Last test result
 <pass/fail summary>
+
+## Last verification result
+<VERIFIED | NOT VERIFIED | BLOCKED | n/a — stage not reached, or not applicable to this project>
 
 ## Uncommitted changes
 <git status --short output, or "none">

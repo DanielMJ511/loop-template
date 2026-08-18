@@ -2,6 +2,7 @@
 name: orchestrate
 description: Drive one pass of the task loop, spawning builder, test-runner, verifier, code-reviewer and docs-writer for each task in loop/PLAN.md until the tasks are exhausted or a task gets stuck. Use when the user wants to implement the next planned task(s), or says "/orchestrate".
 model: sonnet
+effort: medium
 ---
 
 Run in the main session. Write no feature code directly — every code change goes through `builder` or `implementer`. Never scheduled or backgrounded: this is a single foreground invocation that processes tasks until done or blocked, then returns control to the user.
@@ -10,7 +11,7 @@ Run in the main session. Write no feature code directly — every code change go
 
 Read `loop/PROFILE.md` (every command below comes from it), `loop/PLAN.md`, `loop/LESSONS.md` in full — you are the one who slices it for each agent — and the tail of `loop/STATE.md` (last ~20 entries).
 
-Every lesson carries audience tags (`[planning]`, `[builder]`, `[reviewer]`, `[docs]`). Each spawn below gets only the entries tagged for it, verbatim, and never the whole file — an agent reading another stage's constraints is paying attention tax on things it cannot act on. Skip entries marked `RETIRED` entirely: their content is already permanent instruction text somewhere in `.claude/`, and passing them along re-introduces the duplication retirement removed.
+Every lesson carries audience tags (`[planning]`, `[builder]`, `[reviewer]`, `[docs]`, `[testing]`, `[verifier]`, `[security]`). Each spawn below gets only the entries tagged for it, verbatim, and never the whole file — an agent reading another stage's constraints is paying attention tax on things it cannot act on. `/retro` moves retired lessons out to `loop/lessons-archive.md`, which you never read and never pass on; if you find a `RETIRED` entry still sitting in `loop/LESSONS.md`, skip it and mention it at the end of the run.
 
 Every spawn also gets the profile's Commands and Conventions sections. Agents do not read the project's build files to work out how to test it, and they do not infer conventions from whichever file they happened to open.
 
@@ -52,7 +53,7 @@ Spawn `builder` with: the task packet, the profile's Commands and Conventions se
 
 ## 4. Test
 
-Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile's Commands and Prerequisites.
+Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile's Commands and Prerequisites, and the `[testing]`-tagged lessons — what this project's suite has been caught misreporting.
 
 - **Pass** → step 4b.
 - **Fail** → increment this task's failure counter and persist it (below):
@@ -74,7 +75,7 @@ On resume, read the `Status:` line before spawning anything, and continue the la
 
 **A prerequisite failure is not a test failure.** If `test-runner` reports a missing prerequisite from the profile — a container runtime down, a service unreachable, a missing env file — fix the environment or tell the user, and do not count it against the task's failure counter. Spending an escalation on a stopped Docker daemon wastes the ladder's most expensive rung on a non-defect.
 
-**A green gate that cannot go red is not a pass.** Check the profile's test-gate status before trusting this step:
+**A green gate that cannot go red is not a pass.** Check the profile's Test gate status before trusting this step:
 
 - If the profile records **no test suite**, this step proves nothing and you must not treat it as verification. Several toolchains exit 0 on an empty test run without a warning, so the loop would report every task as passing while executing zero assertions. Substitute the strongest gate the project actually has, in this order: **step 4b**, which becomes the primary gate rather than an optional one and should run for every task it possibly can; then the build and type-check commands from the profile; then the lint command. Say explicitly in the `loop/STATE.md` entry which gate was used, so the journal never implies tests passed when none exist.
 - If `test-runner` reports **zero tests executed** when the profile says a suite exists, that is a failure, not a pass — a test selection filter that matches nothing, or a suite that failed to load. Treat it as a step-4 failure and respin.
@@ -88,7 +89,9 @@ When a project has no test suite, say so once at the start of the run and recomm
 - The profile's Runtime verification section says `applicable: yes`.
 - At least one of the packet's acceptance criteria is observable at runtime. A criterion about an internal invariant, a refactor with no behavioural change, or a docs-only task has nothing to observe.
 
-When both hold, spawn `verifier` with the packet's acceptance criteria, the profile's Runtime verification and Prerequisites sections. It starts the app, exercises each criterion, and reports what it observed.
+When both hold, spawn `verifier` with the packet's acceptance criteria, the profile's Runtime verification section **including its Browser observation fields**, Prerequisites, and the `[verifier]`-tagged lessons. It starts the app, exercises each criterion, and reports what it observed.
+
+The Browser observation fields decide whether a UI criterion is reachable at all — `verifier` has no browser and drives only the harness this project owns. Omitting them leaves it guessing about the one thing it cannot improvise.
 
 This is the only stage that tests the application rather than the tests. A green suite cannot see an endpoint that was never registered, a migration that didn't run, config bound to the wrong key, or a 200 returned over a swallowed exception — those reach a user without ever reaching a red test.
 
@@ -158,7 +161,7 @@ For each item: spawn `verifier` where it is observable against the running app, 
 
 **An unchecked item at the end of a unit is a result, not an oversight** — it records exactly what the unit did not prove, which is the most useful thing the plan carries into the next one. Do not mark an item verified because the tasks all passed: that is what the item is testing for, and treating it as proof turns the list into a restatement of "the work is done".
 
-**Then spawn `security-auditor` on the unit's cumulative change set** — the range from the commit the unit started at to `HEAD`, plus the working tree if the loop hasn't committed. Give it the unit's goal from `loop/PLAN.md` and the profile's Architecture section.
+**Then spawn `security-auditor` on the unit's cumulative change set** — the range from the commit the unit started at to `HEAD`, plus the working tree if the loop hasn't committed. Give it the unit's goal from `loop/PLAN.md`, the profile's Architecture section, and the `[security]`-tagged lessons — the shapes this codebase has been caught getting wrong before.
 
 This is the loop's only holistic look at the change set. `code-reviewer` sees one task's diff at a time, so a defect that emerges from how several tasks compose — a route added in one, an authorization check relaxed in another — passes every per-task review while being plain across the unit.
 

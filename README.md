@@ -116,13 +116,17 @@ guess is visible rather than buried.
 `loop/LESSONS.md` is the part most worth understanding, because it's the part that makes the loop
 improve instead of just repeat.
 
-- **Every lesson is tagged with its audience** — `[planning]`, `[builder]`, `[reviewer]`, `[docs]` —
-  and each stage receives only its own slice. A lesson aimed at planning delivered to a builder
-  reaches the one stage that can no longer act on it. That bug existed in the origin project for
-  three milestones.
+- **Every lesson is tagged with its audience** — `[planning]`, `[builder]`, `[reviewer]`, `[docs]`,
+  `[testing]`, `[verifier]`, `[security]` — and each stage receives only its own slice. A lesson
+  aimed at planning delivered to a builder reaches the one stage that can no longer act on it. That
+  bug existed in the origin project for three milestones.
+- **One file, not one per audience.** A lesson can carry several tags and is written once. Seven of
+  the eleven seeded lessons are multi-audience, so splitting the file per stage would duplicate most
+  of it — starting with the lesson that says a fact worth stating twice will drift.
 - **Lessons get retired.** When a lesson becomes permanent instruction text, or a seeded lesson
-  proves inapplicable, it's replaced by a one-line pointer. Without this the file grows forever and
-  every agent pays for it on every spawn.
+  proves inapplicable, `/retro` moves it to `loop/lessons-archive.md` as a one-line pointer. The
+  pointer still stops a future `/retro` re-deriving it, but a retired lesson has no audience by
+  definition — leaving it in the delivered file made every agent pay for it on every spawn, forever.
 - **A lesson must be falsifiable.** "Write better tests" is not a lesson. "An assertion that cannot
   fail is worse than an absent one, because it reads as coverage" is.
 - **`/retro` reads the commits, not just the journal.** The journal is agents reporting on
@@ -163,16 +167,28 @@ never implies a full session happened when it didn't.
 
 ## Which model runs what
 
-Every stage pins its own model in frontmatter, so the loop costs the same whatever your session
-model is, and you never toggle `/model` by hand.
+Every stage pins its own model **and effort level** in frontmatter, so the loop costs the same
+whatever your session settings are, and you never toggle `/model` by hand.
 
-| Stage | Model | Why |
-|---|---|---|
-| `/loop-init`, `/loop-plan`, `/retro` | `opus` | Their output is durable and nothing downstream re-checks it |
-| `/orchestrate`, `/loop-handoff` | `sonnet` | Routing and transcription against heavily-scripted rules |
-| `implementer`, `security-auditor` | `opus` | The escalation tier diagnoses rather than retries; the auditor reads a whole unit at once |
-| `builder`, `code-reviewer`, `docs-writer`, `verifier` | `sonnet` | The standard tier |
-| `test-runner` | `haiku` | High-output, low-reasoning: run the suite, digest the log |
+| Stage | Model | Effort | Why |
+|---|---|---|---|
+| `/loop-init`, `/loop-plan`, `/retro` | `opus` | `high` | Their output is durable and nothing downstream re-checks it |
+| `implementer`, `security-auditor` | `opus` | `high` | The escalation tier diagnoses rather than retries; the auditor reads a whole unit at once |
+| `/orchestrate` | `sonnet` | `medium` | Routing against heavily-scripted rules |
+| `builder`, `code-reviewer`, `verifier` | `sonnet` | `medium` | The standard tier, all re-checked downstream |
+| `docs-writer`, `/loop-handoff` | `sonnet` | `low` | Transcription into a fixed shape |
+| `test-runner` | `haiku` | `low` | High-output, low-reasoning: run the suite, digest the log |
+
+`teacher` is deliberately absent: it inherits your session's model and effort, because it isn't part
+of the loop.
+
+**`builder` at `medium` is the deliberate lever.** It's the most-spawned agent in the system, and
+everything after it — tests, runtime verification, review — re-checks its work, so it's the one place
+where buying effort back is cheapest and most easily caught if wrong. Treat it as a measurement, not
+a settled answer: run a unit at `medium` and one at `high`, then compare `implementer` line counts in
+`loop/AUDIT.log`. If escalations per unit don't rise, the lower setting is free. That's the same
+method this README recommends below for the `/orchestrate` model choice, and the audit log exists
+partly to make it cheap.
 
 The rule is **durability, not difficulty**. `/loop-plan` writes packets that no later stage
 re-verifies, `/loop-init` writes the profile every agent then trusts, and `/retro` writes lessons
@@ -312,3 +328,22 @@ start — does not, for the same reason a stopped Docker daemon doesn't burn a r
 
 Where a project has **no test suite**, this becomes the primary gate rather than an optional one.
 That's the honest answer to a green run that executed zero assertions.
+
+### Browser-facing work
+
+`verifier` has no browser. Its tools are a shell and file access, so it reaches a rendered page only
+by driving the harness **your project already owns** — `/loop-init` detects Playwright, Cypress,
+Puppeteer or WebdriverIO, verifies one spec actually runs, and records the invocation in the
+profile's Browser observation fields.
+
+If your project has a UI and no harness, the profile records that too, and a criterion needing a
+rendered page comes back `NOT VERIFIED`. That is deliberate. The alternative — a stage that reports
+success on something it structurally cannot see — is the failure three of the seeded lessons are
+about, and it's worse than an honest gap because it closes the question.
+
+**No Playwright agent ships with this template, on purpose.** Nic's loop has a Playwright-driven `qa`
+agent; bundling one here would break the one rule, since a browser harness is a stack choice and
+`.claude/` holds nothing project-specific. It would also duplicate work for the projects that already
+own Playwright — their specs *are* the test suite, so `test-runner` already runs them — and it would
+depend on an install the template can't perform. Detection adapts to whichever harness you chose;
+bundling would pick one for you.

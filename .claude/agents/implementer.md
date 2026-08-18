@@ -3,6 +3,7 @@ name: implementer
 description: "Escalation agent. Spawned by /orchestrate only after builder has failed the same task twice, or received a critical code-review finding on its first attempt. Diagnoses why the earlier attempt failed rather than blindly retrying."
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: opus
+effort: high
 hooks:
   Stop:
     - hooks:

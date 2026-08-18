@@ -2,6 +2,7 @@
 name: loop-plan
 description: Generate loop/PLAN.md and loop/tasks/ for the next unit of work — a milestone, a ticket, or a prompt — grill the breakdown with the user, and record resulting decisions before any code is written. Use when the user wants to start or re-plan a unit of work, or says "/loop-plan".
 model: opus
+effort: high
 ---
 
 Run in the main session, never delegated to a subagent — the grilling step below is an interactive dialogue with the user that an isolated subagent cannot hold.
@@ -97,7 +98,13 @@ Unit: <work item ref>   Status: pending
 <observable conditions, scoped to this task. Mark each `[runtime]` if it can be
 observed against the running app — a request, a command, a rendered output, a log
 line. /orchestrate spawns `verifier` for the runtime ones. Unmarked criteria are
-checked by the suite and by review.>
+checked by the suite and by review.
+
+Mark `[runtime:ui]` where observing it needs a rendered page — a click, a console
+message, a layout. `verifier` has no browser and can only drive the harness the
+profile's Browser observation fields name; where that reads `none`, a `[runtime:ui]`
+criterion will come back NOT VERIFIED. Check that field while writing the packet, and
+say so here rather than letting the gap surface at verification time.>
 
 ## Relevant conventions
 <the profile rules that apply, decision records to read, domain terms in play>

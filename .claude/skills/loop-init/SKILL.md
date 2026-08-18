@@ -2,6 +2,7 @@
 name: loop-init
 description: Detect this project's stack, conventions, tracker and git policy, and write loop/PROFILE.md so the loop can run here without any hand-editing. Use once per project when adopting the loop, or when the user says "/loop-init". Also use to re-detect after a project's build or conventions change materially.
 model: opus
+effort: high
 ---
 
 Run in the main session. Detect, propose, write the profile, stop. **Never plan a milestone, write a task packet, or touch application code** — `/loop-plan` does the first two and `builder` does the third.
@@ -88,6 +89,22 @@ If it does apply, find and record: the start command; the **readiness signal** (
 Look in this order — `docker-compose.yml` and `Procfile`, the manifest's run/serve/start script, CI's end-to-end or smoke job if there is one, then the README's "getting started" section. A compose file is usually the best source, because it names the ports, the dependencies and the health checks in one place.
 
 **Verify by starting it once.** Bring the app up, confirm the readiness signal actually fires, reach it, then stop it. An unverified start command is close to useless: `verifier` will report `BLOCKED` on every task and the stage will look broken rather than unconfigured. If it can't be started here — a credential you don't have, a service that isn't reachable — record the commands, mark them `(assumed)`, and list it in Open questions.
+
+### Detect the browser harness, and install nothing
+
+The profile's Browser observation fields. `verifier` has no browser tool — it drives the harness **this project already owns**, through its shell. So this step is detection, never provisioning: do not add Playwright, Cypress or a browser download to a project that hasn't chosen one. That is a decision for the project's own maintainers, and a template that installs a 300MB dependency to satisfy its own verification stage has stopped adapting to the stack and started imposing one.
+
+Look for: `playwright.config.*`, `cypress.config.*`, `wdio.conf.*`, `puppeteer` in the manifest's dev dependencies or in test imports, an `e2e/` or `tests/e2e/` directory, and any CI job that installs browsers (`playwright install`, `cypress run`, a `browser-actions` step).
+
+If you find one, record it and **verify by running a single spec headless**, exactly as you verified the single-test command in step 2 — an unrun browser invocation is at least as likely to be wrong, because the headless flag, the base URL and the "is the app already up?" assumption all vary by harness. Record the invocation that worked.
+
+Then decide `UI-observable criteria`, and be willing to write the unwelcome answer:
+
+- **A harness exists** → `verifier drives the harness above`.
+- **The app has no UI** (an API, a CLI, a library, a worker) → `none — this app has no UI`. Clean answer, nothing missing.
+- **The app has a UI and there is no harness** → `not verifiable here — no harness, so UI criteria are the user's to confirm`. Say this plainly to the user at step 7: acceptance criteria that need a rendered page will come back `NOT VERIFIED`, which is the honest result rather than a stage quietly passing what it cannot see. Recommend a harness task if they want that closed — their call, like the test harness in step 2.
+
+Never leave these fields blank. A blank one reads downstream as "no UI concerns here", which is the one reading that makes a missing harness invisible.
 
 ## 3. Detect conventions
 

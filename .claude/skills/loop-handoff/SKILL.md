@@ -18,7 +18,8 @@ Overwrite `loop/HANDOFF.md` — this is a single checkpoint, not a log; replace 
 
 ```
 # HANDOFF — session checkpoint
-Written: <timestamp>
+Written: <ISO-8601 timestamp, e.g. 2026-08-18T09:42:00Z>
+Status: active
 
 ## Unit
 <work item ref>
@@ -47,4 +48,6 @@ Written: <timestamp>
 
 Append a single line to `loop/STATE.md`: `## <date> — Handoff checkpoint written`.
 
-`/orchestrate` reads `loop/HANDOFF.md` first on its next invocation and resumes from the described task and stage if it's newer than the last `loop/STATE.md` entry, instead of restarting from `loop/PLAN.md`'s first unchecked task.
+`/orchestrate` reads `loop/HANDOFF.md` first on its next invocation and resumes from the described task and stage whenever it reads `Status: active`, instead of restarting from `loop/PLAN.md`'s first unchecked task. It flips the status to `consumed` as it resumes, so the same checkpoint is never replayed onto a task that has moved on.
+
+The `STATE.md` line below is a journal record only. It is **not** how the checkpoint is found, and nothing compares it against anything — this skill appends it as its final act, so any "is the handoff newer than the journal?" test is one the handoff always loses.

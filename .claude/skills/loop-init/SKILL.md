@@ -11,7 +11,7 @@ Your entire job is to make every later stage able to work here without reading a
 ## 1. Decide the mode
 
 ```
-git -C . log --oneline -1 2>/dev/null | head -1
+git log --oneline -1
 ```
 
 - Output, and source files present → **brownfield**. Conventions already exist in the code, whether or not anyone wrote them down. Detect them.
@@ -125,7 +125,7 @@ When in doubt choose `prompt`. It is the only source that cannot be wrong, and `
 ```
 git log --oneline -20
 git symbolic-ref --short HEAD
-ls .github/pull_request_template.md .husky .pre-commit-config.yaml 2>/dev/null
+git ls-files .github/pull_request_template.md .husky .pre-commit-config.yaml
 ```
 
 Infer the commit message format from what's actually there — if 20 commits show `type: summary`, that's the format; if they show `[ABC-123] summary`, that's the format. Record it as a pattern with a real example.
@@ -180,7 +180,25 @@ Then write:
 3. `loop/PLAN.md` — a stub saying no work item is loaded and to run `/loop-plan`.
 4. `loop/STATE.md` — a header line and an adoption entry (date, mode, detected stack, work-item source).
 5. `loop/tasks/README.md` — copy `.claude/loop-templates/tasks-README.md`.
-6. If footprint is local: append `loop/` and `.claude/` to `.git/info/exclude`, then confirm with `git status --short` that the repo reads clean. Verify with `git check-ignore -v loop/PLAN.md` that the exclusion resolves to `.git/info/exclude` and not to a committed `.gitignore`.
+6. If footprint is local, **check what is already tracked before excluding anything**:
+
+   ```
+   git ls-files .claude loop
+   ```
+
+   Exclusion applies only to untracked paths. If this prints anything, adding those paths to `.git/info/exclude` does nothing to them — and per this template's own README, any project you have used Claude Code in already has a tracked `.claude/`, so this is the common case rather than the edge one.
+
+   - **Nothing tracked** → append `loop/` and `.claude/` to `.git/info/exclude`.
+   - **Something tracked** → say so plainly and give the user the two real options: `git rm --cached -r <path>` to untrack it (a deletion in everyone else's next pull, so it is their call), or accept a committed footprint for those paths. Do not write the exclusion and report success.
+
+   Then verify **every** path you claimed to exclude, not just one:
+
+   ```
+   git check-ignore -v loop/PLAN.md .claude/settings.json
+   git status --short
+   ```
+
+   `git status --short` must come back clean. Probing `loop/PLAN.md` alone passes happily while `.claude/` sits exposed in the diff a teammate reviews — the precise failure the local footprint exists to prevent.
 
    If footprint is **committed**, exclude `loop/AUDIT.log` specifically. It is machine-local run telemetry that changes on every spawn; committing it produces conflict-prone churn in every PR and tells a teammate nothing.
 
@@ -191,7 +209,7 @@ Nothing to install. Each loop agent declares the hook in its own frontmatter as 
 Two things to confirm here, because both fail silently:
 
 - **`jq` or `python3` must be on PATH** — `command -v jq python3`. The script reads the hook payload with one of them and exits quietly with neither, producing an empty log that looks exactly like "nothing has run yet". If neither is present, say so now and tell the user the loop still works, just without the audit trail.
-- **`sh` must resolve.** On macOS and Linux this is free. On Windows it means Git Bash. If it isn't there, point the hook at the PowerShell twin instead — edit the `command` line in each of the five agent files to `powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.ps1" -AgentName <agent>`. This is the one sanctioned edit to a machinery file, because it is platform-specific rather than project-specific.
+- **`sh` must resolve.** On macOS and Linux this is free. On Windows it usually does not: verified on a stock machine, `sh` is not on `PATH` at all, and bare `bash` resolves to the WSL stub in `WindowsApps`, which fails with `execvpe(/bin/bash) failed` when no distro is installed — or worse, succeeds against a completely different view of the filesystem. Never write bare `bash` into a hook command. Git Bash does ship a working shell at `<git root>/bin/sh.exe` (derivable from `git --exec-path`), so pointing the hook at that absolute path is an alternative to the PowerShell twin below. If it isn't there, point the hook at the PowerShell twin instead — edit the `command` line in each of the five agent files to `powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.ps1" -AgentName <agent>`. This is the one sanctioned edit to a machinery file, because it is platform-specific rather than project-specific.
 
 Then tell the user to check `loop/AUDIT.log` has content after their first `/orchestrate` run. A wrong interpreter path fails silently and looks identical to an empty log.
 

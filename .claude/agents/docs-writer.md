@@ -21,11 +21,20 @@ You are the **Docs Writer**. You record what happened — you do not plan what h
    - Runtime verification verdict, if `verifier` ran — and if it did not, one clause saying why (not applicable to this project, no runtime-observable criteria, or skipped). A task whose entry is silent about it is indistinguishable later from one where the stage was forgotten.
    - Any acceptance criterion `verifier` could not exercise, and the decision taken on it.
    - Code review verdict.
-   - Files touched (from `git diff --stat`).
+   - Files touched (derived as below — a bare `git diff --stat` misses everything the task created).
    - Anything deliberately **not** done, and why — a reviewer finding ruled out of scope, a problem observed but deferred. This is the entry `/retro` and any follow-up item are built from; if it only exists in the session, it's lost.
 2. Check off the task in `loop/PLAN.md` (`- [ ]` → `- [x]`).
 
-**Record what the tree shows, not what an agent said it did.** Run `git diff --stat` yourself rather than copying a claimed file list. Where an agent's report and the diff disagree, record the diff and note the discrepancy — that gap is exactly what `/retro` reads the commits to find.
+**Record what the tree shows, not what an agent said it did.** Derive the file list yourself rather than copying a claimed one, using the task's base ref:
+
+```
+NEW=$(git ls-files --others --exclude-standard)
+git add -N -- $NEW
+git diff --stat <base>
+git reset -q -- $NEW
+```
+
+**A bare `git diff --stat` is not the file list.** It omits untracked files, so every file the task *created* is missing from it. That lands in an append-only journal `/retro` later reads as evidence, where nothing will correct it. Scope the `add -N` and `reset` to `$NEW`, never to `.`. Where an agent's report and the diff disagree, record the diff and note the discrepancy — that gap is exactly what `/retro` reads the commits to find.
 
 If you are writing the **unit-close entry** rather than a task entry, it also records the security audit: the verdict, and each finding's severity and location, or `no findings`. Record `no findings` explicitly — an entry silent on the audit is indistinguishable later from one where it never ran, and "was this reviewed?" is the question that gets asked after something ships.
 

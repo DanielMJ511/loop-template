@@ -10,6 +10,16 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<SH> \"$CLAUDE_PROJECT_DIR/.claude/loop-templates/hooks/audit-log.sh\""
+          }
+        ]
+      }
     ]
   }
 }

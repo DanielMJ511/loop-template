@@ -11,7 +11,11 @@ Then read what the unit actually did, not only what its agents said they did. Fi
 
 `loop/STATE.md` is agents reporting on themselves. A report of what an agent was about to do is not evidence it happened, and the dangerous half-applied tree is the one that still passes. The commits are the only record that cannot be self-serving.
 
-Where the journal and the commits disagree, that gap is itself a candidate lesson — and say so plainly in the entry.
+Then read `loop/AUDIT.md` for the same window. The `SubagentStop` hook writes it, so it records every spawn that happened — including the ones for a task that was later blocked, which no journal entry covers because `docs-writer` only runs on tasks that succeeded.
+
+You now have three records of the same unit, and they fail differently: the journal is agents describing themselves, the audit log is what actually ran, and the commits are what actually landed. Where any two disagree, that gap is itself a candidate lesson — and say so plainly in the entry.
+
+The most useful disagreement is a task with many audit lines and a short, untroubled journal entry: that is a task that fought back, written up as though it hadn't.
 
 ## 2. Identify recurring friction
 

@@ -177,7 +177,8 @@ Then write:
 3. `loop/PLAN.md` — a stub saying no work item is loaded and to run `/loop-plan`.
 4. `loop/STATE.md` — a header line and an adoption entry (date, mode, detected stack, work-item source).
 5. `loop/tasks/README.md` — copy `.claude/loop-templates/tasks-README.md`.
-6. If footprint is local, **check what is already tracked before excluding anything**:
+6. `loop/AUDIT.md` — a header line. The `SubagentStop` hook appends to it; creating it here means the footprint decision below covers it like every other `loop/` file.
+7. If footprint is local, **check what is already tracked before excluding anything**:
 
    ```
    git ls-files .claude loop

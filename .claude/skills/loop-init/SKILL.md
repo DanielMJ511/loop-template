@@ -42,7 +42,8 @@ Determine: build, full test suite, **single test file**, **single test case**, l
 Derive them from the **test runner** instead, which you identify from the manifest's dev dependencies or the test files' imports. Then **verify by running** — an unverified single-test invocation is the single most likely thing in this profile to be wrong, because the syntax varies by runner and by version:
 
 - Identify the runner (from `devDependencies`, a test config file, or what the test files import).
-- Find its file-selection and name-filter flags. Most runners have both: one to run a path, one to match a test name.
+- Find its file-selection and name-filter flags. Many runners have both — one to run a path, one to match a test name — but **some genuinely have neither, and a missing flag is a fact to record rather than a gap to paper over.** Karma, for one, has no CLI name filter at all: narrowing to a single case there means `fit`/`fdescribe` in the source. Where a form does not exist, say so in that row and name what the project would do instead. An invented flag is worse than an honest limitation, because the first agent to use it loses a spawn discovering it was never real.
+- **If the runner drives a browser, confirm a browser actually exists.** Karma, Vitest browser mode and web-test-runner all launch one, and the machine may not have the default. Find which binary is used and how it is located — usually an env var such as `CHROME_BIN` — and record the full invocation including that variable. A test command that works only because your shell happened to have it set is a command the loop cannot reproduce.
 - Run each form once against a real test file from this repo and confirm it executes fewer tests than the full suite. Record the exact invocation that worked, not the one the docs suggest.
 - If a package-manager script wrapper needs an argument separator (`npm test -- <args>`), include it in the recorded command — omitting it silently passes the flags to the wrong process.
 - **If the project has no tests, these forms cannot be verified.** Record the runner's documented syntax, mark both rows `(assumed)`, and note that they stay unverified until a suite exists. Do not present an unrun command as a detected fact.
@@ -121,6 +122,14 @@ Two rules on how you write these down:
 ### Reference existing docs, do not absorb them
 
 If the project already has `CONTRIBUTING.md`, `CLAUDE.md`, `AGENTS.md`, a style guide, or a decision-record directory, **link to it and summarize what it governs in one line.** Do not copy its rules into the profile. Two copies of a rule drift apart, and then agents follow whichever they read first — the exact failure the loop's own lessons file warns about. If such a doc already covers conventions thoroughly, the profile's conventions section should be mostly pointers.
+
+### Credentials you notice along the way
+
+Detection reads config files, so you will sometimes see hardcoded credentials. Report them in Open questions with the path — do not fix them, do not rotate anything, do not commit. It is the user's call and it is independent of the loop.
+
+**Separate a real secret from a public identifier, because conflating them costs you the reader.** A database password, an API secret, a private key or a service-account JSON is a genuine leak. A Firebase web `apiKey`, a public client ID, or a publishable payment key is **not** — those are designed to ship in every client bundle, and calling them a leak trains the user to discount the finding that mattered. For those, the real question is whether the service's own access rules are locked down; say that instead.
+
+For anything genuinely secret, check whether it is in **git history and pushed**, not merely in the working tree — `git log --oneline --all -- <path>`. That changes the remedy from "edit the file" to "rotate the credential", and only the second one actually helps.
 
 ## 4. Detect work-item source and tracker
 
@@ -205,7 +214,7 @@ Then write:
 
    Exclusion applies only to untracked paths. If this prints anything, adding those paths to `.git/info/exclude` does nothing to them — and per this template's own README, any project you have used Claude Code in already has a tracked `.claude/`, so this is the common case rather than the edge one.
 
-   - **Nothing tracked** → append `loop/` and `.claude/` to `.git/info/exclude`.
+   - **Nothing tracked** → append `loop/` and `.claude/` to `.git/info/exclude` — but **read the file first and append only what is missing.** Someone may have set this up before running you, and a second copy of an entry is confusing rather than harmful, which is exactly why it survives. `grep -c` for each path before writing it.
    - **Something tracked** → say so plainly and give the user the two real options: `git rm --cached -r <path>` to untrack it (a deletion in everyone else's next pull, so it is their call), or accept a committed footprint for those paths. Do not write the exclusion and report success.
 
    Then verify **every** path you claimed to exclude, not just one:
@@ -247,6 +256,10 @@ Two things to confirm here, because both fail silently:
   Never write bare `bash` into a hook command on Windows: it resolves to the WSL stub in `WindowsApps`, which fails with `execvpe(/bin/bash) failed` when no distro is installed — or worse, succeeds against a completely different view of the filesystem.
 
 Then tell the user to check `loop/AUDIT.log` has content after their first `/orchestrate` run. A wrong interpreter path fails silently and looks identical to an empty log.
+
+**If you smoke-test a hook, build the payload with a real JSON writer, not by hand-escaping quotes in a shell string.** A malformed fixture produces exactly the same symptom as a broken hook — silence and exit 0 — and the conclusion you will reach is that the machinery is at fault. This happened on the loop's first adoption and came one step from a permanent edit to a shared machinery file.
+
+**The `.ps1` repoint above is the only sanctioned edit to anything in `.claude/`.** If a hook still appears broken after a valid payload, that is a defect in the template and belongs upstream as an issue — not a local patch. A per-project fix to machinery forfeits every later improvement, silently, and is invisible to the next person who adopts the template.
 
 ## 8. Stop
 

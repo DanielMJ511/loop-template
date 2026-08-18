@@ -46,8 +46,15 @@ existing one and you get `.claude/.claude` — broken, and silently so.
 `loop-init`, `loop-plan`, `orchestrate`, `retro` or `loop-handoff`, copying replaces it. Rename or skip those rather than
 overwriting a project's own tuned agents with these generic ones.
 
-**Then check the agents resolve** before trusting a run: confirm `builder` and `test-runner` appear
-in your available agents. Takes seconds and derisks everything downstream.
+**Then check the agents resolve** before trusting a run — just ask Claude *"which agents are
+available?"* in the project. It reads the loaded list from its own context, which is the only check
+that proves the **harness parsed** the files rather than merely that they exist on disk. A typo in
+one agent's frontmatter leaves the file sitting there and the agent silently missing. You should see
+eight project agents; `/doctor` reports duplicate names if a project of your own already defines one.
+
+Don't reach for `/agents` — as of Claude Code v2.1.198 it no longer lists anything, it just prints a
+reminder to edit `.claude/agents/` directly. (`claude agents` on the command line is unrelated: it
+manages background sessions, not agent definitions.)
 
 ### A brand-new project
 
@@ -121,8 +128,8 @@ improve instead of just repeat.
   `[testing]`, `[verifier]`, `[security]` — and each stage receives only its own slice. A lesson
   aimed at planning delivered to a builder reaches the one stage that can no longer act on it. That
   bug existed in the origin project for three milestones.
-- **One file, not one per audience.** A lesson can carry several tags and is written once. Seven of
-  the eleven seeded lessons are multi-audience, so splitting the file per stage would duplicate most
+- **One file, not one per audience.** A lesson can carry several tags and is written once. Eight of
+  the twelve seeded lessons are multi-audience, so splitting the file per stage would duplicate most
   of it — starting with the lesson that says a fact worth stating twice will drift.
 - **Lessons get retired.** When a lesson becomes permanent instruction text, or a seeded lesson
   proves inapplicable, `/retro` moves it to `loop/lessons-archive.md` as a one-line pointer. The
@@ -133,7 +140,7 @@ improve instead of just repeat.
 - **`/retro` reads the commits, not just the journal.** The journal is agents reporting on
   themselves; the commits are the only record that can't be self-serving.
 
-You start with 11 seeded lessons marked `[seed]`, inherited from the origin project. They're about
+You start with 12 seeded lessons marked `[seed]`, inherited from the origin project and its first adoption. They're about
 how *agents* fail rather than about any one stack, so they transfer. `/retro` retires any that turn
 out not to apply here.
 

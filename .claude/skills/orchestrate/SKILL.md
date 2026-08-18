@@ -34,6 +34,8 @@ If `loop/PLAN.md` has no work item loaded or no tasks, stop and tell the user to
 
 Take the next task in `loop/PLAN.md` order that is both unchecked (`- [ ]`) and not marked blocked (`- [!]`). Read its full packet at `loop/tasks/T-00X.md`.
 
+**A task line is one whose checkbox is followed by a `T-00X` id.** `PLAN.md`'s `## Verification` list uses the same checkbox syntax in the same file, and step 8 checks those boxes off too — so matching on the checkbox alone will hand you a verification scenario as though it were a task, and report a plan that is longer than it is.
+
 Pass over `- [!]` tasks here and report them together when the run ends. A blocked task is one a human has to unblock; re-entering it spends the whole escalation ladder a second time on the failure that already exhausted it. If every remaining task is blocked, stop and say so rather than looping.
 
 ### The task line is the loop's durable state

@@ -10,9 +10,11 @@ DIR="${CLAUDE_PROJECT_DIR:-.}"
 PLAN="$DIR/loop/PLAN.md"
 [ -f "$PLAN" ] || exit 0
 
-done_n=$(grep -c '^- \[x\]' "$PLAN")
-todo_n=$(grep -c '^- \[ \]' "$PLAN")
-blocked_n=$(grep -c '^- \[!\]' "$PLAN")
+# Match T-00X only. The ## Verification list uses the same checkbox syntax in
+# the same file, and counting those as tasks reports a loop that does not exist.
+done_n=$(grep -c '^- \[x\] T-' "$PLAN")
+todo_n=$(grep -c '^- \[ \] T-' "$PLAN")
+blocked_n=$(grep -c '^- \[!\] T-' "$PLAN")
 ceiling_n=$(grep -c 'attempt=2/2' "$PLAN")
 
 # Silent on a healthy loop. Noise on every turn trains people to ignore it.
@@ -22,7 +24,7 @@ echo "loop guard: ${done_n} done, ${todo_n} remaining, ${blocked_n} blocked, ${c
 
 if [ "$blocked_n" -gt 0 ]; then
   echo "blocked — these need a human before /orchestrate runs again:"
-  grep '^- \[!\]' "$PLAN"
+  grep '^- \[!\] T-' "$PLAN"
 fi
 
 if [ "$ceiling_n" -gt 0 ]; then

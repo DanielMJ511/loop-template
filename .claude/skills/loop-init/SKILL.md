@@ -224,6 +224,12 @@ pointing at an interpreter that isn't there fails silently on every turn, which 
 `hooks` key into the project's `.claude/settings.json`, creating that file only if it does not
 exist. Show the user the resulting diff and get confirmation before writing.
 
+**Substitute into the parsed JSON, not into the file text, and re-parse before writing.** The shell
+path contains spaces on Windows (`C:\Program Files\Gitin\sh.exe`), so it has to arrive quoted —
+and quotes pasted into raw JSON text produce a `settings.json` that no longer parses. A broken
+settings file is a bad thing to hand someone: it can take every hook and permission in the project
+down with it, not just the loop's. This is not hypothetical; it was hit while testing this step.
+
 Preserving what is already there is the whole point. This template's promise is that adopting it
 never touches your settings, and a paste that clobbers someone's existing hooks or permissions
 breaks that promise in the least recoverable way.

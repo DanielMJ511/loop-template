@@ -17,7 +17,7 @@ PLAN="$DIR/loop/PLAN.md"
 
 # The in-flight task is the first unchecked line; prefer one showing attempts.
 LINE=$(grep -m1 'attempt=' "$PLAN")
-[ -n "$LINE" ] || LINE=$(grep -m1 '^- \[ \]' "$PLAN")
+[ -n "$LINE" ] || LINE=$(grep -m1 '^- \[ \] T-' "$PLAN")
 [ -n "$LINE" ] || exit 0        # nothing in flight; nothing worth checkpointing
 
 TASK=$(printf '%s' "$LINE" | sed -n 's/^- \[.\] \(T-[0-9]*\).*/\1/p')

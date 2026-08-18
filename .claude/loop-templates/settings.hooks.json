@@ -1,5 +1,5 @@
 {
-  "_comment": "Hook entries for the loop. /loop-init MERGES these into the project's .claude/settings.json — it never copies this file over one. Replace <SH> with the absolute POSIX shell path /loop-init detects.",
+  "_comment": "Hook entries for the loop. /loop-init MERGES these into the project's .claude/settings.json — it never copies this file over one. Replace <SH> with the absolute POSIX shell path /loop-init detects, wrapped in quotes because it contains spaces on Windows. Substitute into the parsed structure and re-parse before writing; pasting a quoted path into raw JSON text yields a file that no longer parses.",
   "hooks": {
     "Stop": [
       {

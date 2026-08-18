@@ -46,20 +46,55 @@ try {
         if ($id.Length -gt 8) { $id = $id.Substring(0, 8) }
     }
 
-    $msg  = if ($p.last_assistant_message) { [string]$p.last_assistant_message } else { '' }
+    $msg = if ($p.last_assistant_message) { [string]$p.last_assistant_message } else { '' }
+
+    # Two views of the message. $flat keeps the original characters so T-003
+    # stays intact; $norm reduces every non-alphanumeric to a space so a token
+    # can be matched on whole-word boundaries with a plain substring test. The
+    # .sh twin performs exactly this normalization — the two must agree on the
+    # same payload, or the log's verdict column becomes platform-dependent.
     $flat = ($msg -replace '\s+', ' ').Trim()
+    $norm = (($msg -replace '[^A-Za-z0-9]', ' ') -replace '\s+', ' ').Trim()
 
     # Task id, if the agent named one anywhere in its report.
     $task = '-'
     $m = [regex]::Match($flat, 'T-\d{3}')
     if ($m.Success) { $task = $m.Value }
 
-    # Verdict token. Matched case-sensitively on word boundaries: these agents
-    # emit uppercase verdicts by convention, and a case-insensitive match would
-    # fire on the word "approved" appearing anywhere in prose.
+    # Verdict vocabulary, shared with audit-subagent.sh and with the agent files
+    # that emit it. Ordered most-specific first, because matching is substring-
+    # based on word-bounded text: NOT VERIFIED must be tested before VERIFIED
+    # and NO FINDINGS before FINDINGS, or the negative verdict logs as its
+    # opposite.
+    #
+    # Keep this list in sync with the `VERDICT:` lines in .claude/agents/. A
+    # token no agent emits is dead weight; an agent verdict absent here logs as
+    # `-`, which is indistinguishable from "the agent said nothing".
+    $verdicts = @(
+        'NO TESTS EXECUTED',
+        'UNABLE TO AUDIT',
+        'CHANGES REQUESTED',
+        'NOT VERIFIED',
+        'NO FINDINGS',
+        'TESTS PASSED',
+        'TESTS FAILED',
+        'APPROVED',
+        'VERIFIED',
+        'FINDINGS',
+        'BLOCKED'
+    )
+
+    # Prefer the agent's declared `VERDICT: <token>` line. Scanning free prose is
+    # the fallback only: it fires on a token used mid-sentence ("not
+    # APPROVED-ing it yet"), and this log is supposed to be the record no agent
+    # can shape.
+    $padded = " $norm "
     $signal = '-'
-    foreach ($pat in @('NO TESTS EXECUTED', 'CHANGES REQUESTED', 'APPROVED', 'BLOCKED', 'FAILED')) {
-        if ($flat -cmatch ('\b' + [regex]::Escape($pat) + '\b')) { $signal = $pat; break }
+    foreach ($prefix in @('VERDICT ', '')) {
+        foreach ($pat in $verdicts) {
+            if ($padded.Contains(" $prefix$pat ")) { $signal = $pat; break }
+        }
+        if ($signal -ne '-') { break }
     }
 
     $stamp = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')

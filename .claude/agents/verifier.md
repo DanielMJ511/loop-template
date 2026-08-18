@@ -47,3 +47,17 @@ Three rules on what you may claim:
 - **Distinguish "wrong" from "absent".** A route that 404s and a route that returns the wrong body are different defects, and the next agent will hunt in different places.
 
 If a criterion fails, do not diagnose the cause beyond what you observed, and do not go looking through the source for it. Report the observation and let `/orchestrate` decide who fixes it.
+
+## End with a verdict line
+
+Make the **last line** of your report exactly one of these, and nothing else on that line:
+
+```
+VERDICT: VERIFIED
+VERDICT: NOT VERIFIED
+VERDICT: BLOCKED
+```
+
+The `SubagentStop` hook reads this line into `loop/AUDIT.log`. Without it your outcome logs as `-` — indistinguishable from having said nothing — and a `NOT VERIFIED` becomes invisible to `/retro`, which is the one place a pattern of runtime failures would otherwise show up.
+
+Lead with the verdict as well: the line at the end is for the log, the one at the top is for the orchestrator.

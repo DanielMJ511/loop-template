@@ -36,19 +36,63 @@ agent=$(json_get agent_type)
 id=$(json_get agent_id | cut -c1-8)
 [ -n "$id" ] || id='-'
 
-flat=$(json_get last_assistant_message | tr '\n\r\t' '   ' | tr -s ' ')
+msg=$(json_get last_assistant_message)
+
+# Two views of the message. `flat` keeps the original characters so T-003 stays
+# intact; `norm` reduces every non-alphanumeric to a space so a token can be
+# matched on whole-word boundaries with a plain substring test. The .ps1 twin
+# performs exactly this normalization — the two must agree byte for byte on the
+# same payload, or the log's verdict column becomes platform-dependent.
+flat=$(printf '%s' "$msg" | tr '\n\r\t' '   ' | tr -s ' ')
+norm=$(printf '%s' "$msg" | tr -c 'A-Za-z0-9' ' ' | tr -s ' ')
 
 task=$(printf '%s' "$flat" | grep -oE 'T-[0-9]{3}' | head -1)
 [ -n "$task" ] || task='-'
 
-# Verdict token. `case` is case-sensitive: these agents emit uppercase verdicts
-# by convention, and matching loosely would fire on prose.
-signal='-'
-for pat in 'NO TESTS EXECUTED' 'CHANGES REQUESTED' 'APPROVED' 'BLOCKED' 'FAILED'; do
-    case "$flat" in
-        *"$pat"*) signal="$pat"; break ;;
-    esac
-done
+# Verdict vocabulary, shared with audit-subagent.ps1 and with the agent files
+# that emit it. Ordered most-specific first, because matching is substring-based
+# on word-bounded text: NOT VERIFIED must be tested before VERIFIED and
+# NO FINDINGS before FINDINGS, or the negative verdict logs as its opposite.
+#
+# Keep this list in sync with the `VERDICT:` lines in .claude/agents/. A token
+# no agent emits is dead weight; an agent verdict absent here logs as `-`, which
+# is indistinguishable from "the agent said nothing".
+VERDICTS='NO TESTS EXECUTED
+UNABLE TO AUDIT
+CHANGES REQUESTED
+NOT VERIFIED
+NO FINDINGS
+TESTS PASSED
+TESTS FAILED
+APPROVED
+VERIFIED
+FINDINGS
+BLOCKED'
+
+# Print the first token in $VERDICTS that appears in $norm behind $1, or nothing.
+# Splits on newline into positional params rather than piping into `while read`,
+# which would run the loop in a subshell and lose the result.
+find_verdict() {
+    _prefix=$1
+    _oldifs=$IFS
+    IFS='
+'
+    set -- $VERDICTS
+    IFS=$_oldifs
+    for _pat do
+        case " $norm " in
+            *" $_prefix$_pat "*) printf '%s' "$_pat"; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+# Prefer the agent's declared `VERDICT: <token>` line. Scanning free prose is the
+# fallback only: it fires on a token used mid-sentence ("not APPROVED-ing it
+# yet"), and this log is supposed to be the record no agent can shape.
+signal=$(find_verdict 'VERDICT ')
+[ -n "$signal" ] || signal=$(find_verdict '')
+[ -n "$signal" ] || signal='-'
 
 stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 printf '%s | %s | %s | %s | %s\n' "$stamp" "$agent" "$task" "$signal" "$id" \

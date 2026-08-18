@@ -102,13 +102,21 @@ This is the only stage that tests the application rather than the tests. A green
 Produce the diff first. `git diff` does not show untracked files, so a task that **added** files produces an empty-looking diff and gets reviewed as though it changed nothing:
 
 ```
-NEW=$(git ls-files --others --exclude-standard)   # files this task created
-git add -N -- $NEW        # -N records intent to add; it does not stage content
+NEWLIST="$(git rev-parse --git-dir)/loop-new-files"
+git ls-files --others --exclude-standard -z > "$NEWLIST"   # snapshot: files this task created
+[ -s "$NEWLIST" ] && git add -N --pathspec-from-file="$NEWLIST" --pathspec-file-nul
 git diff <base>
-git reset -q -- $NEW      # undo only those marks
+[ -s "$NEWLIST" ] && git reset -q --pathspec-from-file="$NEWLIST" --pathspec-file-nul
+rm -f "$NEWLIST"
 ```
 
-Scope both commands to `$NEW`, never to `.` — a bare `git reset` unstages whatever the user had staged, and losing someone's index to a review step is not a trade the loop gets to make.
+Three details, each of which corrupts the user's index or the review if dropped:
+
+- **Snapshot the list once; never re-run `git ls-files` for the `reset`.** `add -N` puts those paths *into* the index, so a second `--others` listing comes back empty — and the `reset` then runs against an empty pathspec.
+- **`git reset` with an empty pathspec resets the entire index.** It is not a no-op; it silently unstages everything the user had staged. That is why the `[ -s "$NEWLIST" ]` guard is on both lines and not decoration.
+- **Use the NUL-delimited form, never a shell variable.** `NEW=$(git ls-files ...)` splits on whitespace, so one created path containing a space aborts the whole `git add` with `fatal: pathspec 'my' did not match any files`, and the diff then omits *every* file the task created — the exact failure this recipe exists to prevent.
+
+Scope both commands to that snapshot, never to `.` — losing someone's index to a review step is not a trade the loop gets to make.
 
 Spawn `code-reviewer` on that diff — `git diff <the base ref recorded in step 2>`, never a bare `git diff` — with the profile's Conventions section, the `[reviewer]`-tagged lessons, the out-of-scope file list from step 2 if the tree was dirty, and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).
 
@@ -160,7 +168,9 @@ This is the loop's only holistic look at the change set. `code-reviewer` sees on
 
 Then walk the profile's Milestone-close gates in order, doing the ones that have commands and prompting the user for the ones that are theirs. If the profile's gates include a SAST or dependency-scan command, run it as well — it and `security-auditor` catch different things, and neither substitutes for the other: the scanner knows published vulnerabilities and pattern signatures, the auditor knows what this unit was trying to do.
 
-Once the user reports the outcome of any gate that was theirs, append a close entry to `loop/STATE.md` recording it (unit, item ref, findings or "no findings"). Do this even though the loop has ended: no `docs-writer` runs after the last task, so without this step the journal's final entry reads "remaining steps are the user's" forever and the gate looks skipped.
+Once the user reports the outcome of any gate that was theirs, spawn `docs-writer` one final time to append the **unit-close entry** to `loop/STATE.md`. Pass it: the unit and item ref, the security audit verdict and any findings (or "no findings"), the outcome of each item on the Verification list including the ones left unchecked and why, and the outcome of each profile gate. There is no task to check off, and you must say so in the spawn prompt.
+
+Do this even though the loop has ended. Without it the journal's final entry reads "remaining steps are the user's" forever, and every gate after the last task looks skipped — `/retro` then reads a unit that appears to have stopped early. `docs-writer` owns `loop/STATE.md` for the same reason it owns the task entries: one writer, one format, and the length budgets that apply to what agents hand each other never apply to what gets written to a file.
 
 Any deferred work from this unit becomes a follow-up item here, under the rules below.
 

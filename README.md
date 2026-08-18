@@ -197,9 +197,11 @@ Optional, offered by `/loop-init`, and the only piece of the loop that goes in a
 as each spawn ends, and it appends one line to `loop/AUDIT.log`:
 
 ```
-2026-08-17T17:38:53Z | builder       | T-003 | -                 | 7f3a91cc
-2026-08-17T17:38:54Z | test-runner   | T-003 | NO TESTS EXECUTED | bb20e4d1
-2026-08-17T17:38:55Z | code-reviewer | T-003 | CHANGES REQUESTED | c9d81aa2
+2026-08-17T17:38:53Z | builder          | T-003 | -                 | 7f3a91cc
+2026-08-17T17:38:54Z | test-runner      | T-003 | TESTS PASSED      | bb20e4d1
+2026-08-17T17:38:55Z | verifier         | T-003 | NOT VERIFIED      | 41c07de2
+2026-08-17T17:41:02Z | code-reviewer    | T-003 | CHANGES REQUESTED | c9d81aa2
+2026-08-17T18:02:17Z | security-auditor | T-006 | NO FINDINGS       | 5b1e9f34
 ```
 
 **Why it earns its place:** `/retro` is built on the premise that agents reporting on themselves
@@ -211,18 +213,26 @@ task, so it's the only record that survives a run that died mid-task. When `docs
 It is deliberately structural — who ran, when, on what, with what verdict token. No report content,
 so it never leaks a long summary and never needs truncating. The narrative stays in `loop/STATE.md`.
 
-**Nothing to install.** Each of the five loop agents declares it in its own frontmatter as a `Stop`
-hook; Claude Code converts that to `SubagentStop` and unregisters it when the agent finishes. So it
-ships with the template, touches no settings file, and only ever fires for the loop's own agents —
-an `Explore` or `Plan` spawn in the same project writes nothing.
+**Nothing to install.** Each of the seven spawned loop agents declares it in its own frontmatter as a
+`Stop` hook; Claude Code converts that to `SubagentStop` and unregisters it when the agent finishes.
+So it ships with the template, touches no settings file, and only ever fires for the loop's own
+agents — an `Explore` or `Plan` spawn in the same project writes nothing.
+
+Each of those agents ends its report with a `VERDICT: <token>` line, which is what the hook records.
+Scanning the report's prose is only a fallback, and a poor one: it can't read a negation, so
+"I am not APPROVED-ing this yet" logs as `APPROVED`.
 
 Two things it needs, both of which fail silently:
 
 - **`jq` or `python3` on PATH**, to read the hook payload. With neither, you get an empty log that
   looks identical to "nothing has run yet".
-- **`sh`** — free on macOS and Linux, means Git Bash on Windows. If you don't have it, point the
-  `command` line in the five agent files at `audit-subagent.ps1` instead. That's the one sanctioned
-  edit to a machinery file, because it's platform-specific rather than project-specific.
+- **Git Bash, on Windows.** Claude Code runs hook commands through bash, falling back to PowerShell
+  on Windows only when Git Bash isn't installed — so the shipped `sh` command works whenever Git
+  Bash is present, *even though `sh` is not on the Windows `PATH`*. Don't test the `PATH`; test for
+  Git Bash. Without it, point the `command` line at `audit-subagent.ps1` in every agent file that
+  declares the hook — get that list from `grep -l audit-subagent .claude/agents/*.md` rather than
+  from memory, since editing all but one leaves a hook that silently never fires. That's the one
+  sanctioned edit to a machinery file, because it's platform-specific rather than project-specific.
 
 Check the log has content after your first `/orchestrate` run.
 

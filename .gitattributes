@@ -1,0 +1,4 @@
+# Hook scripts must reach every clone with LF endings. core.autocrlf=true is
+# common on Windows, and a shell script rewritten to CRLF is fragile in ways
+# that surface as confusing runtime errors rather than as a checkout problem.
+*.sh text eol=lf

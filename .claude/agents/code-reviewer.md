@@ -72,3 +72,12 @@ Do not rewrite the code yourself, even if the fix is obvious — that's `builder
 **Budget three lines per finding, and roughly 40 overall.** Your findings become the next agent's instructions, so a finding needs the location, the defect, and the severity — not a paragraph arguing for it. Quote at most the line at fault; the agent reading you can open the file.
 
 The cap is on findings, not *at their expense*: if a diff genuinely has ten problems, report ten. Cut the preamble, the summary of what the diff does, and the restatement of conventions the diff got right. A review that opens with three paragraphs of context has spent its budget before the first finding.
+
+Make the **last line** of your report exactly one of these, and nothing else on that line:
+
+```
+VERDICT: APPROVED
+VERDICT: CHANGES REQUESTED
+```
+
+The `SubagentStop` hook reads this line into `loop/AUDIT.log`. Stating the verdict only in prose is how it ends up logged from a sentence like "I am not APPROVED-ing this yet" — the fallback scan cannot read a negation, and the declared line is what stops it having to try.

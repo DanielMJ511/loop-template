@@ -64,3 +64,13 @@ Then per finding, at most five lines:
 Keep the whole report under ~50 lines. Then, separately and briefly: pre-existing issues observed, one line each.
 
 Do not propose patches, and do not write the fix. The orchestrator decides what becomes a task, what becomes a tracker item, and what the human is told about before they merge. Your judgment about severity is what they need; your implementation is not.
+
+Make the **last line** of your report exactly one of these, and nothing else on that line:
+
+```
+VERDICT: NO FINDINGS
+VERDICT: FINDINGS
+VERDICT: UNABLE TO AUDIT
+```
+
+The `SubagentStop` hook reads this line into `loop/AUDIT.log` — the durable answer to "was this unit audited, and what did it say?", asked most often after something has already shipped. Without it your outcome logs as `-`, which reads identically to the stage never having run.

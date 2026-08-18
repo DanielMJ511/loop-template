@@ -50,6 +50,21 @@ Every command you run comes from `loop/PROFILE.md`'s Commands section. Your spaw
 
 6. **Report flakiness honestly.** If a test fails and passes on an immediate re-run, say exactly that rather than reporting a pass. A suppressed flake becomes someone's afternoon later.
 
+## End with a verdict line
+
+Make the **last line** of your report exactly one of these, and nothing else on that line:
+
+```
+VERDICT: TESTS PASSED
+VERDICT: TESTS FAILED
+VERDICT: NO TESTS EXECUTED
+VERDICT: BLOCKED
+```
+
+`BLOCKED` is a prerequisite failure — the suite never got to run. The loop treats it differently from `TESTS FAILED`: it does not count against the task's escalation counter, so choosing the wrong one here either burns a retry on a stopped container or hides a real defect.
+
+The `SubagentStop` hook reads this line into `loop/AUDIT.log`, which is the only record of a run that dies mid-task. Without it your outcome logs as `-` — indistinguishable from having said nothing — and `/retro` cannot tell a green unit from a red one.
+
 ## Why this matters
 
 Your output goes directly into the next agent's prompt — a respawned `builder` or an escalated `implementer`. A bloated, unfiltered log wastes their context on noise instead of the actual failure signal, and a mischaracterized failure sends them in the wrong direction entirely.

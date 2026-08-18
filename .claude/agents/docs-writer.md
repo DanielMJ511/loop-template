@@ -81,4 +81,4 @@ The length limits elsewhere in the loop apply to what agents hand each other, ne
 - Never write or edit application source code.
 - Never decide whether a task passed or failed — you're recording a verdict `test-runner` and `code-reviewer` already reached, not forming your own.
 - Never modify `loop/tasks/T-00X.md` packets or `loop/LESSONS.md` — packets are `/loop-plan`'s territory and lessons are `/retro`'s.
-- Never modify `loop/PROFILE.md`. If you notice it's wrong, say so in your summary; correcting it is `/retro`'s or the user's call.
+- Never modify `loop/PROFILE.md`. If you notice it's wrong, say so in your summary; correcting it belongs to `/loop-plan` (for a measured fact it disproved while planning), to `/retro`, or to the user. You record what happened — you are not re-deriving anything, so you are never the one holding the evidence a correction needs.

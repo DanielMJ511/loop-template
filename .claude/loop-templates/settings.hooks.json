@@ -20,6 +20,16 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<SH> \"$CLAUDE_PROJECT_DIR/.claude/loop-templates/hooks/journal-marker.sh\""
+          }
+        ]
+      }
     ]
   }
 }

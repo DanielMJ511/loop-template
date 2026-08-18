@@ -48,3 +48,5 @@ Status: active
 Append a single line to `loop/STATE.md`: `## <date> — Handoff checkpoint written`. This is a journal record only — it is **not** how the checkpoint is found, and nothing should compare it against anything.
 
 `/orchestrate` reads `loop/HANDOFF.md` first on its next invocation and resumes from the described task and stage whenever `Status: active`, instead of restarting from `loop/PLAN.md`'s first unchecked task. It flips the status to `consumed` as it resumes, so the same checkpoint is never replayed onto a task that has moved on.
+
+**This file has a second author.** The `PreCompact` hook writes the same shape when the orchestrator's context is about to be compacted, deriving everything from `loop/PLAN.md` because it has no access to the session. Two consequences: keep the format above exactly, and know that a hook-written checkpoint records its Stage as `unknown` — it cannot see one. Yours is better whenever you are in a position to write it, which is why the hook will not overwrite a checkpoint still marked `active`.

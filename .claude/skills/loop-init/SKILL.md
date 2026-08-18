@@ -197,6 +197,36 @@ Then write:
 
    `git status --short` must come back clean. A verification that probes `loop/PLAN.md` alone passes happily while `.claude/` sits exposed in the diff a teammate reviews — which is the precise failure the local footprint exists to prevent.
 
+### Install the hooks
+
+The loop's hooks are the deterministic half of it: they run whether or not an agent remembered to.
+Installing them takes two things — an interpreter, and a merge.
+
+**Find a POSIX shell, and record its absolute path.** The scripts are `sh`, and the path is not
+guessable:
+
+- Unix-likes: `/bin/sh`.
+- Windows: derive it from git, which this loop already depends on —
+  `git --exec-path` gives a path under the Git install; the shell sits at `<git root>/bin/sh.exe`.
+
+**Never write bare `sh` or bare `bash` into a hook command on Windows.** Verified on a stock
+machine: `sh` is not on `PATH` at all, and bare `bash` resolves to the WSL stub in `WindowsApps`,
+which fails with `execvpe(/bin/bash) failed` when no distro is installed — or worse, succeeds with a
+completely different view of the filesystem. Use the absolute path.
+
+If no POSIX shell can be found, **skip the hooks, say so, and record it in the profile's Open
+questions.** The loop works without them; they are guardrails, not machinery. A hook installed
+pointing at an interpreter that isn't there fails silently on every turn, which is worse than none.
+
+**Merge the fragment — never copy it over an existing file.** Read
+`.claude/loop-templates/settings.hooks.json`, substitute the shell path for `<SH>`, and merge its
+`hooks` key into the project's `.claude/settings.json`, creating that file only if it does not
+exist. Show the user the resulting diff and get confirmation before writing.
+
+Preserving what is already there is the whole point. This template's promise is that adopting it
+never touches your settings, and a paste that clobbers someone's existing hooks or permissions
+breaks that promise in the least recoverable way.
+
 ## 8. Stop
 
 Report: the mode, the stack, the work-item source, anything you could not determine, and any command that failed verification.

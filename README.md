@@ -14,8 +14,10 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-16 files, in three subfolders (`agents/`, `skills/`, `loop-templates/`). None of them is a
-`settings.json`, so your own settings are never touched.
+18 files, in three subfolders (`agents/`, `skills/`, `loop-templates/`). None of them is a
+`settings.json`. The loop's hooks ship as a *fragment*, and `/loop-init` merges them into whatever
+`.claude/settings.json` you already have, showing you the diff first — so copying this template in
+never overwrites your own settings.
 
 **If the project has no `.claude/` folder yet** — copy the whole folder in:
 

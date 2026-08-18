@@ -1,0 +1,15 @@
+{
+  "_comment": "Hook entries for the loop. /loop-init MERGES these into the project's .claude/settings.json — it never copies this file over one. Replace <SH> with the absolute POSIX shell path /loop-init detects.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<SH> \"$CLAUDE_PROJECT_DIR/.claude/loop-templates/hooks/loop-guard.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

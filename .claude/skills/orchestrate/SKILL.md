@@ -136,7 +136,7 @@ Only if the profile's Git section permits the loop to commit. If it says the use
 
 ## 8. Loop or stop
 
-If `loop/PLAN.md` still has unchecked tasks, return to step 2.
+If `loop/PLAN.md` still has unchecked tasks, check the profile's Loop budgets before continuing. If this run has already completed the recorded tasks-per-run ceiling, stop and hand back to the user with what is left — the ceiling exists so a long plan cannot land unreviewed while nobody is watching. Otherwise return to step 2.
 
 If any task is marked `- [!]`, the unit is not complete. Report every blocked task together with its failure history and stop here — do not walk the verification list or the close gates against a unit that is missing work, and do not present it as finished.
 

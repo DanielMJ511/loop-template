@@ -152,6 +152,18 @@ How the loop learns what to build. `/loop-plan` reads `source` and ignores the o
 
 ---
 
+## Loop budgets
+
+Ceilings for one `/orchestrate` run. `/orchestrate` enforces these; the `Stop` hook surfaces the
+state they describe, so a runaway is visible even when nobody is reading the transcript.
+
+- Attempts per task before it blocks: `3` — builder, builder, implementer. Lower it for expensive
+  suites; raising it mostly buys more attempts at the same wrong approach.
+- Tasks per run: `<n, or "no limit">` — a ceiling on how much lands before a human looks.
+- Hooks installed: `<yes — via .claude/settings.json | no, and why>`
+
+---
+
 ## Milestone-close gates
 
 Steps that run once per milestone after the last task, in order. Each one either has a command or is

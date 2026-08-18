@@ -36,6 +36,8 @@ If `loop/PLAN.md` has no work item loaded or no tasks, stop and tell the user to
 
 Take the next unchecked (`- [ ]`) task in `loop/PLAN.md` order. Read its full packet at `loop/tasks/T-00X.md`.
 
+**Skip a task whose packet `Status:` line reads `blocked`.** It stays `- [ ]` in `loop/PLAN.md`, so picking by checkbox alone walks straight back into the task that just exhausted the ladder — and starts it at attempt 1, spending two more spawns including an Opus escalation on the failure a human was asked to look at. Read the packet's `Status:` before selecting, not after. Report every blocked task together when the run ends, and if all remaining tasks are blocked, stop and say so rather than looping.
+
 **A task line is one whose checkbox is followed by a `T-00X` id.** `loop/PLAN.md`'s `## Verification` list uses the same checkbox syntax in the same file, so matching on the checkbox alone hands you a verification scenario as though it were a task — and step 8 checks those boxes off too, which makes a completed one indistinguishable from a finished task.
 
 **Record the tree's current commit as this task's review base** — `git rev-parse HEAD` — before spawning anything. Step 5 diffs against it.

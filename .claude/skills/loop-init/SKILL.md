@@ -9,6 +9,46 @@ Run in the main session. Detect, propose, write the profile, stop. **Never plan 
 
 Your entire job is to make every later stage able to work here without reading a single machinery file. If you leave a field guessed where it could have been detected, every downstream agent inherits that guess and acts on it with full confidence.
 
+## 0. Adoption, or re-detection?
+
+**Check this before anything else.**
+
+```
+ls loop/PROFILE.md
+```
+
+- **Absent** → first adoption. Continue to step 1 and write everything step 7 lists.
+- **Present** → **re-detection.** The project has been running the loop. Detect exactly as you would otherwise, but step 7 changes: you rewrite `loop/PROFILE.md` and **nothing else**.
+
+### What re-detection must not touch
+
+`loop/` holds two kinds of file, and only one of them is yours to replace:
+
+| File | On re-detection |
+|---|---|
+| `loop/PROFILE.md` | **Rewrite** — the changed facts are the whole point |
+| `loop/STATE.md` | **Append one entry.** Never rewrite: it is the append-only journal `/retro` reads as evidence |
+| `loop/LESSONS.md` | **Leave alone.** It holds lessons this project earned, which no seed file contains |
+| `loop/PLAN.md`, `loop/tasks/` | **Leave alone.** They may describe a unit in flight |
+| `loop/HANDOFF.md`, `loop/AUDIT.log` | **Leave alone.** Session and run records |
+
+This matters more than it looks. Under the default local footprint `loop/` is in `.git/info/exclude`, so **none of it is in version control and none of it is recoverable.** Re-seeding `LESSONS.md` from the template destroys every earned lesson; rewriting `STATE.md` destroys the history the next `/retro` reasons from. Both would look like success.
+
+### Two things to say out loud
+
+- **Report the profile as a diff, not as a new file.** On a re-run the interesting output is what *changed* — a test gate that went from broken to real, a command that moved, a prerequisite that is now satisfied. Show the before and after for each changed field, and say plainly which facts you could not re-verify.
+- **Warn if a unit is in flight.** If `loop/PLAN.md` has unchecked `- [ ] T-00X` tasks, say so before writing: those packets were written against the facts you are about to change, and `/loop-plan` may need to re-derive them. Finishing or re-planning the unit is the user's call, not yours.
+
+Then append to `loop/STATE.md`:
+
+```
+## <date> — Re-detected (`/loop-init`)
+- Trigger: <what changed — a new dependency, a provisioned service, a toolchain upgrade>
+- Fields changed: <field: old → new, one line each, or "none">
+- Could not re-verify: <list, or "nothing">
+- Unit in flight: <work item ref and unchecked task count, or "none">
+```
+
 ## 1. Decide the mode
 
 ```
@@ -199,7 +239,9 @@ Show the user the profile you're about to write — the detected facts with thei
 
 Lead with the things most likely to be wrong: any command you couldn't verify, any convention detected from a single example, and the work-item source.
 
-Then write:
+**If step 0 said re-detection, write `loop/PROFILE.md` and the `STATE.md` entry only, then skip to step 7b.** Items 2 to 5 below are first-adoption only. Writing any of them on a re-run destroys earned state that is not in version control and cannot be recovered.
+
+Then write (first adoption):
 
 1. `loop/PROFILE.md` — filled in from `.claude/loop-templates/PROFILE.template.md`.
 2. `loop/LESSONS.md` — copy `.claude/loop-templates/LESSONS.seed.md` verbatim. Do not edit the seeded lessons to match this stack; they are stack-independent by construction, and `/retro` retires any that prove inapplicable.
@@ -263,8 +305,15 @@ Then tell the user to check `loop/AUDIT.log` has content after their first `/orc
 
 ## 8. Stop
 
-Report: the mode, the stack, the work-item source, anything you could not determine, and any command that failed verification.
+**On first adoption**, report: the mode, the stack, the work-item source, anything you could not determine, and any command that failed verification. Tell the user to skim `loop/PROFILE.md` — particularly the conventions section, since that is what shapes every line of code the loop writes — and then run `/loop-plan` when ready.
 
-Tell the user to skim `loop/PROFILE.md` — particularly the conventions section, since that is what shapes every line of code the loop writes — and then run `/loop-plan` when ready.
+**On re-detection**, report something different, because the file is not new:
+
+- **What changed, field by field** — old value → new value. This is the output that matters; a re-run whose report reads like a fresh adoption tells the user nothing about what moved.
+- **What you could not re-verify**, and why. A command that verified on adoption and cannot now is a finding, not a blank.
+- **Which files you left untouched**, named explicitly — `loop/STATE.md`, `loop/LESSONS.md`, `loop/PLAN.md`, `loop/tasks/`. Say it plainly: the user has no version-controlled copy under the default footprint, so "I did not overwrite your journal" is worth one line.
+- **Whether a unit is in flight**, and that its packets were written against the previous facts.
+
+Then tell them to re-read the changed fields specifically, and to consider whether an in-flight unit needs re-planning before `/orchestrate` continues.
 
 Do not continue into planning, even if the user's original request was to start building. The profile is a checkpoint worth a human glance precisely because everything downstream depends on it.

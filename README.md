@@ -105,6 +105,25 @@ Two things matter more here than anywhere else:
 If the loop does the wrong thing for your project, the fix is in the profile. Editing a skill to
 suit one project forks the machinery and you lose every later improvement.
 
+### Which stage may replace which `loop/` file
+
+Under the default local footprint, `loop/` is in `.git/info/exclude` — so **nothing in it is in
+version control, and anything overwritten is gone.** Every wholesale write is therefore deliberate
+and listed here:
+
+| File | Replaced by | Otherwise |
+|---|---|---|
+| `PROFILE.md` | `/loop-init`, on adoption **and** on re-detection | Corrected in place by `/loop-plan` (measured facts) and `/retro` |
+| `PLAN.md`, `tasks/T-*.md` | `/loop-plan`, each new unit | Checked off by `docs-writer` |
+| `HANDOFF.md` | `/loop-handoff`, and the `PreCompact` hook | Consumed by `/orchestrate` |
+| `STATE.md` | **never** — append-only | Appended by `docs-writer`, `/loop-plan`, `/loop-init` |
+| `LESSONS.md` | **never** — holds what this project earned | Appended by `/retro` only |
+| `AUDIT.log` | **never** | Appended by the `SubagentStop` hook |
+
+Re-running `/loop-init` rewrites the profile and touches nothing else. It used to rewrite all five
+files, which silently destroyed the journal and every earned lesson on a project that had been
+running for weeks — with no copy in git to restore from.
+
 ## When detection guesses wrong
 
 Expected, and cheap to fix. `/loop-init` cites evidence for each detected fact precisely so a wrong

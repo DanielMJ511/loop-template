@@ -88,9 +88,17 @@ try {
     # the fallback only: it fires on a token used mid-sentence ("not
     # APPROVED-ing it yet"), and this log is supposed to be the record no agent
     # can shape.
+    # The prose fallback runs only for agents that HAVE a verdict vocabulary. For
+    # the others it can produce nothing but false positives: observed in a real
+    # run, a docs-writer entry reported APPROVED because its journal entry quotes
+    # the code reviewer's verdict, attributing a code-reviewer outcome to a stage
+    # that has none - and inconsistently, since its sibling spawns logged '-'.
+    $verdictAgents = @('test-runner', 'verifier', 'code-reviewer', 'security-auditor')
+    $prefixes = if ($verdictAgents -contains $agent) { @('VERDICT ', '') } else { @('VERDICT ') }
+
     $padded = " $norm "
     $signal = '-'
-    foreach ($prefix in @('VERDICT ', '')) {
+    foreach ($prefix in $prefixes) {
         foreach ($pat in $verdicts) {
             if ($padded.Contains(" $prefix$pat ")) { $signal = $pat; break }
         }

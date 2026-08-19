@@ -91,7 +91,18 @@ find_verdict() {
 # fallback only: it fires on a token used mid-sentence ("not APPROVED-ing it
 # yet"), and this log is supposed to be the record no agent can shape.
 signal=$(find_verdict 'VERDICT ')
-[ -n "$signal" ] || signal=$(find_verdict '')
+
+# The prose fallback runs only for agents that HAVE a verdict vocabulary. For the
+# others it can produce nothing but false positives: observed in a real run, a
+# docs-writer entry reported `APPROVED` because its journal entry quotes the code
+# reviewer's verdict, attributing a code-reviewer outcome to a stage that has
+# none - and inconsistently, since its sibling spawns logged `-`.
+if [ -z "$signal" ]; then
+    case "$agent" in
+        test-runner|verifier|code-reviewer|security-auditor)
+            signal=$(find_verdict '') ;;
+    esac
+fi
 [ -n "$signal" ] || signal='-'
 
 stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)

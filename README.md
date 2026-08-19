@@ -128,8 +128,8 @@ improve instead of just repeat.
   `[testing]`, `[verifier]`, `[security]` — and each stage receives only its own slice. A lesson
   aimed at planning delivered to a builder reaches the one stage that can no longer act on it. That
   bug existed in the origin project for three milestones.
-- **One file, not one per audience.** A lesson can carry several tags and is written once. Eight of
-  the twelve seeded lessons are multi-audience, so splitting the file per stage would duplicate most
+- **One file, not one per audience.** A lesson can carry several tags and is written once. Nine of
+  the thirteen seeded lessons are multi-audience, so splitting the file per stage would duplicate most
   of it — starting with the lesson that says a fact worth stating twice will drift.
 - **Lessons get retired.** When a lesson becomes permanent instruction text, or a seeded lesson
   proves inapplicable, `/retro` moves it to `loop/lessons-archive.md` as a one-line pointer. The
@@ -140,7 +140,7 @@ improve instead of just repeat.
 - **`/retro` reads the commits, not just the journal.** The journal is agents reporting on
   themselves; the commits are the only record that can't be self-serving.
 
-You start with 12 seeded lessons marked `[seed]`, inherited from the origin project and its first adoption. They're about
+You start with 13 seeded lessons marked `[seed]`, inherited from the origin project and from the loop's first adoption elsewhere. They're about
 how *agents* fail rather than about any one stack, so they transfer. `/retro` retires any that turn
 out not to apply here.
 

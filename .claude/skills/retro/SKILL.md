@@ -29,6 +29,8 @@ It is written by the harness rather than by an agent, so it is the one record no
 
 - **Does the spawn count match the journal?** `docs-writer` reports respins and escalations from what the orchestrator told it. Three `builder` lines for one task where the entry says "builder only, no respins" is a discrepancy worth a lesson.
 - **Which stage does this unit actually burn its time in?** Counting lines per agent is the cheapest measure of where friction lives, and it points at whether the fix belongs in the packet, the profile, or a lesson.
+
+  **This file makes counts durable and durations not.** It records the moment each spawn *ended* and nothing else, so a spawn's own cost cannot be recovered from it — the gap between two lines is that spawn plus however long the orchestrator spent deciding, plus any time a human took answering a question. If you cite a *duration* or a share-of-time, it came from the session you are sitting in, and that session will not survive to defend the number. Say so in the lesson, and prefer a figure a future reader can re-derive: a wall-clock measurement of the command itself is re-runnable; "41% of agent time" is not. This is the seeded lesson on epistemic status applied to your own output.
 - **Which tasks escalated?** An `implementer` line is an escalation, whether or not anything recorded it.
 
 Treat a count from this file as measured; treat a task attribution of `-` as unknown rather than as "no task". The agent names the task in its own summary, so a line can miss it while the spawn was real.

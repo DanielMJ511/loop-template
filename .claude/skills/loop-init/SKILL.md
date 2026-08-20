@@ -15,7 +15,12 @@ Your entire job is to make every later stage able to work here without reading a
 
 ```
 ls loop/PROFILE.md
+cat .claude/loop-templates/VERSION
 ```
+
+**Report the machinery's date every time, in one line.** `.claude/` is a *copy*: it does not update when the template does, and nothing else in the loop will ever mention it. A project can run machinery months old while the user assumes it is current — which has already caused a near-miss, when a fix that prevents data loss was merged upstream and the adopted project still held the version without it.
+
+You cannot check for updates: an adopted project has no pointer back to where it was copied from. So do not try, and do not guess. State the date, and if it is more than a month or two old, say plainly that re-copying `.claude/` from the template is worth doing before relying on this run. If the file is absent, the copy predates version stamping — say that, and treat it as old.
 
 - **Absent** → first adoption. Continue to step 1 and write everything step 7 lists.
 - **Present** → **re-detection.** The project has been running the loop. Detect exactly as you would otherwise, but step 7 changes: you rewrite `loop/PROFILE.md` and **nothing else**.

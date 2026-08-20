@@ -14,7 +14,7 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-22 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
+23 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
 `settings.json`, so copying the template never touches your own settings — including the six scripts
 in `hooks/`, which the agents and `/orchestrate` register themselves in their own frontmatter. See
 [The audit hook](#the-audit-hook) and [the loop guard](#the-loop-guard-and-the-compaction-checkpoint).
@@ -138,6 +138,14 @@ guess is visible rather than buried.
   more specific and cite a real precedent for it.
 - **The whole stack changed** → re-run `/loop-init`.
 
+**Keeping an adopted project current.** `.claude/` is a copy, not a link — it does not update when
+this template does, and a project can silently run machinery months old. `/loop-init` reports the
+date from `.claude/loop-templates/VERSION` on every run so the staleness is at least visible; it
+cannot check for updates, because an adopted project has no pointer back to where it came from.
+Re-copying `.claude/` is always safe — the machinery is meant to be byte-identical everywhere.
+**`loop/` is not**: re-seeding `LESSONS.md` destroys lessons the project earned, and under the
+default footprint there is no git copy to restore from.
+
 ## Why the lessons file works this way
 
 `loop/LESSONS.md` is the part most worth understanding, because it's the part that makes the loop
@@ -148,7 +156,7 @@ improve instead of just repeat.
   aimed at planning delivered to a builder reaches the one stage that can no longer act on it. That
   bug existed in the origin project for three milestones.
 - **One file, not one per audience.** A lesson can carry several tags and is written once. Nine of
-  the thirteen seeded lessons are multi-audience, so splitting the file per stage would duplicate most
+  the fourteen seeded lessons are multi-audience, so splitting the file per stage would duplicate most
   of it — starting with the lesson that says a fact worth stating twice will drift.
 - **Lessons get retired.** When a lesson becomes permanent instruction text, or a seeded lesson
   proves inapplicable, `/retro` moves it to `loop/lessons-archive.md` as a one-line pointer. The
@@ -159,7 +167,7 @@ improve instead of just repeat.
 - **`/retro` reads the commits, not just the journal.** The journal is agents reporting on
   themselves; the commits are the only record that can't be self-serving.
 
-You start with 13 seeded lessons marked `[seed]`, inherited from the origin project and from the loop's first adoption elsewhere. They're about
+You start with 14 seeded lessons marked `[seed]`, inherited from the origin project and from the loop's first adoption elsewhere. They're about
 how *agents* fail rather than about any one stack, so they transfer. `/retro` retires any that turn
 out not to apply here.
 

@@ -36,6 +36,7 @@ Read it as a reviewer:
 Also check, on every diff:
 
 - **Scope creep** — does the diff touch files or add abstractions beyond what the packet asked for?
+- **Under-delivery** — the other half of scope creep, and the half nothing else in the loop catches. Does the diff meet each acceptance criterion, or only the part of it a test or `verifier` would observe? `builder` is instructed to write the minimum that satisfies the criteria, so a criterion covered by neither gate — an internal invariant, a refactor with no behavioural change — is exactly where "minimum" can quietly land under the line.
 - **Convention drift the profile hasn't caught up to** — if the diff follows a pattern that contradicts the profile, one of the two is stale. Say which you think it is; that's a profile fix, not necessarily a code fix.
 
 ## Retro-earned checks

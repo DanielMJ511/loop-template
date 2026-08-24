@@ -231,6 +231,16 @@ a settled answer: run a unit at `medium` and one at `high`, then compare `implem
 method this README recommends below for the `/orchestrate` model choice, and the audit log exists
 partly to make it cheap.
 
+**The second lever is how much code `builder` writes at all.** It walks a restraint ladder before
+writing a line — does this project already do it, does the standard library, does the framework,
+does a dependency already in the manifest — and the saving compounds downstream, because a smaller
+diff is a cheaper `code-reviewer` and a cheaper `security-auditor` at unit close. The ladder is
+explicitly subordinate to the packet: it governs how much code meets an acceptance criterion, never
+whether to meet one. Measure it the same way — run a unit with it, compare `implementer` line counts
+in `loop/AUDIT.log` against the unit before. **A rise there is the signal that matters**, because it
+means the restraint is buying smaller diffs by under-delivering, which is the one way this lever
+costs more than it saves.
+
 The rule is **durability, not difficulty**. `/loop-plan` writes packets that no later stage
 re-verifies, `/loop-init` writes the profile every agent then trusts, and `/retro` writes lessons
 that persist across milestones — a bad line in any of those is paid for repeatedly. `/orchestrate`

@@ -33,9 +33,27 @@ Two things about how to read it:
 
 If the task requires breaking a convention, do not do it silently. Say so in your summary with the reason.
 
+## How much to build
+
+**The packet outranks this ladder.** Whether a deliverable should exist at all is already settled — by `/loop-plan`, in the packet you were handed. What follows governs *how much code you write to meet an acceptance criterion*, never *whether to meet it*. If a criterion looks unnecessary, that is a packet defect: report it under "If you get stuck" below. Do not resolve it by building less — a deliverable quietly trimmed arrives at review as a small, clean diff and passes.
+
+With that settled, walk these in order and stop at the first rung that answers:
+
+1. **Does this project already do it?** Grep before you write. The profile's Architecture section names the patterns worth reading first, and matching one costs less than inventing a second way to do the same thing.
+2. **Does the standard library do it?**
+3. **Does the framework or platform already provide it natively?**
+4. **Does a dependency already in the manifest do it?** *Already in it* — pulling in a new one is a decision record and a conversation, not a builder call.
+5. **Is it a few lines inline?** Then inline it. Not a new file, not a new layer, not an abstraction with one caller.
+6. **Only then write it** — the minimum that satisfies the acceptance criteria, shaped for no requirement the packet doesn't state.
+
+Two things are never what you minimize away:
+
+- **A guard.** It still has to be proved it can fail (Workflow step 3). Dropping a test is not a smaller change, it is a different one.
+- **A coherent tree.** The smallest diff is not a licence to land production code without the test that covers it — see "Interruption safety" below.
+
 ## Workflow
 
-1. Implement the task. Keep the change scoped to what the packet describes — don't refactor unrelated code, don't add abstractions the task doesn't need.
+1. Implement the task, at the rung the ladder above stopped on. Keep the change scoped to what the packet describes — don't refactor unrelated code on the way past.
 2. Run the profile's build and lint commands to catch errors early. Do **not** run the full test suite — that's `test-runner`'s job, and duplicating a slow suite wastes time. Running a single test file you just wrote is fine and often worth it.
 3. **If you added a guard — a test, an assertion, a check — prove it can fail.** Break the thing it protects, watch the guard fire, restore, and report the failure output you saw. A guard that has never failed is not known to work, and an assertion that cannot fail reads as coverage while providing none.
 4. Stop and summarize: what you changed, which files, which judgment calls you made and why, any convention you had to break, and any open question or assumption the packet didn't cover.

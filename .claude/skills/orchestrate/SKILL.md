@@ -30,7 +30,7 @@ Three requirements, in every spawn prompt:
 
 - State the project's **absolute** path, and have the agent verify it — print the working directory and confirm a known file is present — before it does anything else.
 - Require that any environment fact it reports names the absolute path it applies to. "The file is missing" is unfalsifiable; "missing at `<abs path>`" is checkable, and it is what turns a wrong-directory error from invisible into obvious.
-- Require the agent to name the task id (`T-00X`) in its summary. Costs a token and makes every line of `loop/AUDIT.log` (below) attributable to a task without inferring it from ordering.
+- **Name the task id in the spawn prompt.** Each agent declares it back as a `TASK: T-00X` first line, and that requirement now lives in the agent files rather than depending on you writing it into every prompt — which is where it was being lost: a real run logged three of twenty-five spawns with a missing or wrong id. An agent still cannot declare an id it was never given, so this half stays yours. Together they make every line of `loop/AUDIT.log` (below) attributable without inferring it from ordering.
 
 If `loop/AUDIT.log` exists, the `SubagentStop` hook is installed and each spawn appends a line to it as it ends. You do not write to that file and do not need to read it during a run — it exists for `/retro`, and for reconstructing a run whose session died. Its one use here: if you are resuming and `loop/HANDOFF.md` is absent or stale, `tail` it to see which agents actually ran for the in-flight task, which is more reliable than the transcript for a session that was interrupted.
 

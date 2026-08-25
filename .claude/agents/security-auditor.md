@@ -77,3 +77,15 @@ VERDICT: UNABLE TO AUDIT
 ```
 
 The `SubagentStop` hook reads this line into `loop/AUDIT.log` — the durable answer to "was this unit audited, and what did it say?", asked most often after something has already shipped. Without it your outcome logs as `-`, which reads identically to the stage never having run.
+
+## Declare your scope
+
+Make the **first line** of your report exactly:
+
+```
+TASK: -
+```
+
+You audit a whole unit, not a task, and `-` is the declaration that says so. It matters that you state it rather than leave it out: without a declared line the `SubagentStop` hook falls back to scanning your prose and logs the *first* `T-00X` it finds — which, for a report that ranges across every task in the unit, attributes the whole audit to whichever task you happened to mention first.
+
+Your `VERDICT:` line still goes last. The first line is for attribution, the last for the outcome — they are read by the same hook and neither substitutes for the other.

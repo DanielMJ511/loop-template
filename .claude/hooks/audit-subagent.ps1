@@ -56,10 +56,18 @@ try {
     $flat = ($msg -replace '\s+', ' ').Trim()
     $norm = (($msg -replace '[^A-Za-z0-9]', ' ') -replace '\s+', ' ').Trim()
 
-    # Task id, if the agent named one anywhere in its report.
+    # Task id. Prefer the agent's declared `TASK:` line, exactly as the verdict
+    # below prefers its `VERDICT:` line and for the same reason. The prose
+    # fallback logs the FIRST id anywhere in the report, which is the wrong one
+    # whenever a summary mentions an earlier task before naming its own:
+    # observed in a real run, a T-004 code review logged as T-003 because the
+    # diff's context named the task that created the file. `TASK: -` is a valid
+    # declaration, and the only way a unit-scoped agent can say "no task"
+    # rather than have it inferred. The .sh twin performs exactly this.
     $task = '-'
-    $m = [regex]::Match($flat, 'T-\d{3}')
-    if ($m.Success) { $task = $m.Value }
+    $m = [regex]::Match($flat, '(?i)TASK:\s*(T-\d{3}|-)')
+    if (-not $m.Success) { $m = [regex]::Match($flat, '(T-\d{3})') }
+    if ($m.Success) { $task = $m.Groups[1].Value }
 
     # Verdict vocabulary, shared with audit-subagent.sh and with the agent files
     # that emit it. Ordered most-specific first, because matching is substring-

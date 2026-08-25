@@ -46,7 +46,15 @@ msg=$(json_get last_assistant_message)
 flat=$(printf '%s' "$msg" | tr '\n\r\t' '   ' | tr -s ' ')
 norm=$(printf '%s' "$msg" | tr -c 'A-Za-z0-9' ' ' | tr -s ' ')
 
-task=$(printf '%s' "$flat" | grep -oE 'T-[0-9]{3}' | head -1)
+# Task id. Prefer the agent's declared `TASK:` line, exactly as the verdict
+# below prefers its `VERDICT:` line and for the same reason. The prose fallback
+# logs the FIRST id anywhere in the report, which is the wrong one whenever a
+# summary mentions an earlier task before naming its own: observed in a real
+# run, a T-004 code review logged as T-003 because the diff's context named the
+# task that created the file. `TASK: -` is a valid declaration, and the only way
+# a unit-scoped agent can say "no task" rather than have it inferred.
+task=$(printf '%s' "$flat" | grep -oiE 'TASK:[[:space:]]*(T-[0-9]{3}|-)' | head -1     | grep -oE 'T-[0-9]{3}|-$')
+[ -n "$task" ] || task=$(printf '%s' "$flat" | grep -oE 'T-[0-9]{3}' | head -1)
 [ -n "$task" ] || task='-'
 
 # Verdict vocabulary, shared with audit-subagent.ps1 and with the agent files

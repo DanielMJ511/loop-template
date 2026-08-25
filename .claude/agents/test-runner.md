@@ -71,3 +71,15 @@ The `SubagentStop` hook reads this line into `loop/AUDIT.log`, which is the only
 ## Why this matters
 
 Your output goes directly into the next agent's prompt — a respawned `builder` or an escalated `implementer`. A bloated, unfiltered log wastes their context on noise instead of the actual failure signal, and a mischaracterized failure sends them in the wrong direction entirely.
+
+## Declare your task id
+
+Make the **first line** of your report exactly:
+
+```
+TASK: T-00X
+```
+
+The `SubagentStop` hook reads it into `loop/AUDIT.log`. Without a declared line the hook scans your prose and logs the *first* `T-00X` it finds, which is the wrong one whenever your report names an earlier task before its own — observed in a real run, where a T-004 code review logged as T-003 because the diff's context named the task that created the file. The result is a log line that quietly attributes your work to a task you never touched, and `/retro` reads that log as the record of what actually ran.
+
+Your `VERDICT:` line still goes last. The first line is for attribution, the last for the outcome — they are read by the same hook and neither substitutes for the other.

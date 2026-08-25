@@ -274,8 +274,14 @@ as each spawn ends, and it appends one line to `loop/AUDIT.log`:
 **Why it earns its place:** `/retro` is built on the premise that agents reporting on themselves
 can't be trusted, which is why it reads the commits too. This is a third record, and a stricter one —
 written by the harness, so no agent can shape it, and written per spawn rather than per completed
-task, so it's the only record that survives a run that died mid-task. When `docs-writer` records
-"builder only, no respins" and the log shows three `builder` lines, that gap is the lesson.
+task, so it's the record that survives a run whose own report never arrived. When `docs-writer`
+records "builder only, no respins" and the log shows three `builder` lines, that gap is the lesson.
+
+Its counts are a **lower bound, not a census**. A spawn killed outright — by a watchdog rather than
+stopping — never reaches `SubagentStop` and leaves no line, so the shortfall reads as fewer spawns
+rather than as a gap. Measured in a real unit: six `builder` lines for seven spawns. Cross-check
+anything you act on against the task packets' `Status:` fields, which `/orchestrate` writes
+independently of the hook.
 
 It is deliberately structural — who ran, when, on what, with what verdict token. No report content,
 so it never leaks a long summary and never needs truncating. The narrative stays in `loop/STATE.md`.

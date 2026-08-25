@@ -13,6 +13,9 @@ param([string]$AgentName = '')
 # is written by the harness as each spawn ends, so it survives a session that
 # dies mid-task and cannot be shaped by the agent describing itself.
 #
+# It is a lower bound, not a census: a spawn killed outright never reaches
+# SubagentStop and leaves no line, so counts read low rather than showing a gap.
+#
 # Structural only - who ran, when, on what, with what verdict token. The
 # narrative stays in STATE.md. Keeping content out means the log never leaks a
 # long report and never needs truncating.

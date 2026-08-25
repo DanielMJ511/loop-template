@@ -25,7 +25,7 @@ If `loop/AUDIT.log` is present, the `SubagentStop` hook is installed and the har
 <utc timestamp> | <agent> | <task, or "-"> | <verdict token, or "-"> | <agent id>
 ```
 
-It is written by the harness rather than by an agent, so it is the one record no agent can shape — and unlike `loop/STATE.md`, which `docs-writer` writes only after a task completes, it captures runs that died mid-task. Read the lines since the unit's boundary and use it for the questions the journal answers unreliably:
+It is written by the harness rather than by an agent, so it is the one record no agent can shape — and unlike `loop/STATE.md`, which `docs-writer` writes only after a task completes, it captures a spawn whose own report never arrived. Read the lines since the unit's boundary and use it for the questions the journal answers unreliably:
 
 - **Does the spawn count match the journal?** `docs-writer` reports respins and escalations from what the orchestrator told it. Three `builder` lines for one task where the entry says "builder only, no respins" is a discrepancy worth a lesson.
 - **Which stage does this unit actually burn its time in?** Counting lines per agent is the cheapest measure of where friction lives, and it points at whether the fix belongs in the packet, the profile, or a lesson.
@@ -33,7 +33,9 @@ It is written by the harness rather than by an agent, so it is the one record no
   **This file makes counts durable and durations not.** It records the moment each spawn *ended* and nothing else, so a spawn's own cost cannot be recovered from it — the gap between two lines is that spawn plus however long the orchestrator spent deciding, plus any time a human took answering a question. If you cite a *duration* or a share-of-time, it came from the session you are sitting in, and that session will not survive to defend the number. Say so in the lesson, and prefer a figure a future reader can re-derive: a wall-clock measurement of the command itself is re-runnable; "41% of agent time" is not. This is the seeded lesson on epistemic status applied to your own output.
 - **Which tasks escalated?** An `implementer` line is an escalation, whether or not anything recorded it.
 
-Treat a count from this file as measured; treat a task attribution of `-` as unknown rather than as "no task". The agent names the task in its own summary, so a line can miss it while the spawn was real.
+**Treat a count from this file as a lower bound, not a census.** A line is appended by the `SubagentStop` hook, so a spawn that never reaches that hook — killed by a watchdog rather than stopping — leaves no line at all. Measured in a real unit: a builder stalled on a watchdog after completing its work, and the log carried six `builder` lines for seven spawns. Cross-check any count you intend to act on against the task packets' `Status:` fields, which `/orchestrate` writes independently of the hook. The error only ever points one way — a killed spawn reads as *fewer* spawns, never as a gap — so a task that escalated and then died looks cheaper here than it was.
+
+Treat a task attribution of `-` as unknown rather than as "no task", with one exception: `security-auditor` declares `-` deliberately, because it audits a unit rather than a task.
 
 If the file is absent, the hook simply is not installed. Note it once and move on — it is not a finding.
 

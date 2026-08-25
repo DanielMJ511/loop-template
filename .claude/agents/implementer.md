@@ -57,3 +57,13 @@ Report: what actually caused the failure, why the earlier approach couldn't work
 Two things are worth their lines whatever else you cut: the **`[planning]` lesson candidate** and the **packet defect**, if either applies. They prevent a class of failure rather than an instance, and they reach `/loop-plan` only through you.
 
 If the task is genuinely blocked — the acceptance criteria are contradictory, a dependency can't do what the packet requires — say so plainly. The loop's next step after you is to stop and hand back to the user, and a clear blocker report is far more useful than a partial change that obscures the problem.
+
+## Declare your task id
+
+Make the **first line** of your report exactly:
+
+```
+TASK: T-00X
+```
+
+The `SubagentStop` hook reads it into `loop/AUDIT.log`. Without a declared line the hook scans your prose and logs the *first* `T-00X` it finds, which is the wrong one whenever your report names an earlier task before its own — observed in a real run, where a T-004 code review logged as T-003 because the diff's context named the task that created the file. The result is a log line that quietly attributes your work to a task you never touched, and `/retro` reads that log as the record of what actually ran.

@@ -35,9 +35,40 @@ try {
     $warnings = New-Object System.Collections.Generic.List[string]
 
     # 1. Tasks that burned more spawns than the budget allows.
+    #
+    #    Scoped to the current unit. AUDIT.log is append-only across units while
+    #    task ids restart at T-001 in each one, so counting the whole file adds
+    #    an earlier unit's T-002 to this one's. Measured in a real project:
+    #    T-002 read 12 (7+5) and T-003 read 11 (7+4) against a ceiling of 10,
+    #    while nothing in the live unit exceeded 5 - two false alarms on every
+    #    stop. A guard that cries wolf is one nobody reads.
+    #
+    #    The boundary is the commit time of loop/PLAN.md's `Unit base:`. Nothing
+    #    new writes to AUDIT.log for this - its single-writer rule is why it can
+    #    be trusted. Unresolvable boundary (no plan, no base yet, no git) falls
+    #    back to counting everything: over-warning is the safe failure here,
+    #    silently skipping the check is not. The .sh twin does exactly this.
     if (Test-Path -LiteralPath $audit) {
+        $since = ''
+        $planPath = Join-Path $loopDir 'PLAN.md'
+        if (Test-Path -LiteralPath $planPath) {
+            $bm = [regex]::Match((Get-Content -LiteralPath $planPath -Raw),
+                                 'Unit base:[^0-9a-f]*([0-9a-f]{7,40})', 'IgnoreCase')
+            if ($bm.Success) {
+                $oldTz = $env:TZ
+                $env:TZ = 'UTC0'
+                try {
+                    $since = (& git -C $root log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ $bm.Groups[1].Value)
+                    if ($LASTEXITCODE -ne 0) { $since = '' }
+                } catch { $since = '' }
+                $env:TZ = $oldTz
+            }
+        }
         $counts = @{}
         foreach ($line in Get-Content -LiteralPath $audit) {
+            # Every line opens with a 20-character UTC stamp, so this comparison
+            # does not depend on how the split below handles the rest.
+            if ($since -and $line.Length -ge 20 -and $line.Substring(0, 20) -lt $since) { continue }
             $parts = $line -split '\s*\|\s*'
             if ($parts.Count -ge 3 -and $parts[2] -match '^T-\d+$') {
                 $counts[$parts[2]] = 1 + $(if ($counts.ContainsKey($parts[2])) { $counts[$parts[2]] } else { 0 })

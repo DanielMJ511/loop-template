@@ -48,8 +48,31 @@ add() { warnings="${warnings}${warnings:+ }$1" ;}
 
 # 1. Tasks that burned more spawns than the budget allows. AUDIT.log is the only
 #    record of spawns that actually happened, including those from a dead run.
+#
+#    Scoped to the current unit. The log is append-only across units while task
+#    ids restart at T-001 in each one, so counting the whole file adds an earlier
+#    unit's T-002 to this one's. Measured in a real project: T-002 read 12 (7+5)
+#    and T-003 read 11 (7+4) against a ceiling of 10, while nothing in the live
+#    unit exceeded 5 - two false alarms on every stop, for the rest of that unit
+#    and every unit after. A guard that cries wolf is one nobody reads.
+#
+#    The boundary is the commit time of loop/PLAN.md's `Unit base:`, which
+#    /orchestrate records on the unit's first run. Nothing new writes to
+#    AUDIT.log for this - the file's single-writer rule is why it can be trusted.
+#    If the boundary cannot be resolved - no plan, no base recorded yet, no git -
+#    fall back to counting the whole file. Over-warning is the safe failure here;
+#    silently skipping the check is not.
 if [ -f "$audit" ]; then
-    over=$(awk -F' *\\| *' -v m="$max_spawns" '
+    since=''
+    base=$(sed -n 's/.*[Uu]nit base:[^0-9a-f]*\([0-9a-f]\{7,40\}\).*/\1/p' \
+        "$root/loop/PLAN.md" 2>/dev/null | head -1)
+    [ -n "$base" ] && since=$(TZ=UTC0 git -C "$root" log -1 \
+        --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ "$base" 2>/dev/null)
+
+    over=$(awk -F' *\\| *' -v m="$max_spawns" -v since="$since" '
+        # Every line opens with a 20-character UTC stamp, so this comparison does
+        # not depend on how the field separator splits the rest of the line.
+        since != "" && substr($0, 1, 20) < since { next }
         $3 ~ /^T-[0-9]+$/ { c[$3]++ }
         END { for (t in c) if (c[t] > m) printf "%s used %d spawns; ", t, c[t] }
     ' "$audit" 2>/dev/null)

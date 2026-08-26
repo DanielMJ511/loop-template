@@ -27,7 +27,7 @@ Your spawn prompt also carries the `[testing]`-tagged entries from `loop/LESSONS
    - If the packet or your instructions name specific test files or classes, use the profile's single-test command.
    - Otherwise use the profile's full-suite command, unless the profile's Test scope default says changed-area only.
 
-3. **On pass**: report one line — what ran, and the test count if the summary shows it.
+3. **On pass**: report one line of substance — what ran, and the test count if the summary shows it. That one line is the *middle* of the report shape below; the `TASK:` and `VERDICT:` lines sit around it and are always present.
 
    **A zero-test run is never a pass.** Read how many tests actually executed, not just the exit code. Some toolchains exit 0 having run nothing at all — `dotnet test` in a repo with no test project restores and returns success in silence. If zero tests ran, report exactly that as its own outcome: `NO TESTS EXECUTED`, with the command you ran and what it printed. The orchestrator handles that case differently from a pass, and reporting it as green makes the loop verify nothing while looking healthy.
 
@@ -53,9 +53,19 @@ Your spawn prompt also carries the `[testing]`-tagged entries from `loop/LESSONS
 
 6. **Report flakiness honestly.** If a test fails and passes on an immediate re-run, say exactly that rather than reporting a pass. A suppressed flake becomes someone's afternoon later.
 
-## End with a verdict line
+## Report format
 
-Make the **last line** of your report exactly one of these, and nothing else on that line:
+Your whole report has this shape, every time:
+
+```
+TASK: T-004
+go test ./... — 49 tests, 48 passed, 1 skipped
+VERDICT: TESTS PASSED
+```
+
+A `TASK:` line, then your findings, then a `VERDICT:` line. **The first and last lines are fixed and are never what you trim** — where the steps above say "one line", that is the middle, and it does not include these two.
+
+The verdict token is exactly one of:
 
 ```
 VERDICT: TESTS PASSED
@@ -66,20 +76,10 @@ VERDICT: BLOCKED
 
 `BLOCKED` is a prerequisite failure — the suite never got to run. The loop treats it differently from `TESTS FAILED`: it does not count against the task's escalation counter, so choosing the wrong one here either burns a retry on a stopped container or hides a real defect.
 
-The `SubagentStop` hook reads this line into `loop/AUDIT.log`, which is the only record of a run that dies mid-task. Without it your outcome logs as `-` — indistinguishable from having said nothing — and `/retro` cannot tell a green unit from a red one.
+The `SubagentStop` hook reads both lines into `loop/AUDIT.log`, which is the only record of a run that dies mid-task. Drop the verdict and your outcome logs as `-`, indistinguishable from having said nothing. Drop the `TASK:` line and the hook falls back to scanning your prose for the first `T-00X` it can find — which is the wrong task whenever your report mentions another one, so the line gets attributed to work you never touched. `/retro` reads that log as the record of what actually ran.
+
+Both of these were observed for real. A `test-runner` omitted the `TASK:` line on five spawns out of five, because an earlier instruction to "report one line" read as the whole contract, and four audit lines carried the wrong task id as a result. That is why the shape is stated once, here, instead of in two places that can disagree.
 
 ## Why this matters
 
 Your output goes directly into the next agent's prompt — a respawned `builder` or an escalated `implementer`. A bloated, unfiltered log wastes their context on noise instead of the actual failure signal, and a mischaracterized failure sends them in the wrong direction entirely.
-
-## Declare your task id
-
-Make the **first line** of your report exactly:
-
-```
-TASK: T-00X
-```
-
-The `SubagentStop` hook reads it into `loop/AUDIT.log`. Without a declared line the hook scans your prose and logs the *first* `T-00X` it finds, which is the wrong one whenever your report names an earlier task before its own — observed in a real run, where a T-004 code review logged as T-003 because the diff's context named the task that created the file. The result is a log line that quietly attributes your work to a task you never touched, and `/retro` reads that log as the record of what actually ran.
-
-Your `VERDICT:` line still goes last. The first line is for attribution, the last for the outcome — they are read by the same hook and neither substitutes for the other.

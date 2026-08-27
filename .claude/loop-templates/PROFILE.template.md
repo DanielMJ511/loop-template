@@ -153,7 +153,12 @@ How the loop learns what to build. `/loop-plan` reads `source` and ignores the o
 
 ## Git
 
-- Branch policy: `<e.g. never commit to main; branch as feature/<slug>>`
+- Branch policy: `<e.g. never commit to main; branch as <type>/<slug>>` — reuse the commit
+  message types below, so a remediation unit gets `fix/...` rather than `feature/...`. Set this
+  from **where this project's gate sits**: a blocking pre-merge gate (CI, review) makes committing
+  to the default branch defensible; without one the default is never commit to it, because
+  `security-auditor` reviews a unit *after* every task has already been committed and a finding
+  there needs somewhere to land.
 - Commit message format: `<e.g. "<type>: <summary> (T-00X, #<n>)">`, types: `<list>`
 - Evidence: `<git log --oneline -20 output shape, or a hook / PR template path>`
 - Commit cadence: `<per task | per milestone | never — user commits manually>`

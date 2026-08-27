@@ -201,7 +201,38 @@ git ls-files .github/pull_request_template.md .husky .pre-commit-config.yaml
 
 Infer the commit message format from what's actually there — if 20 commits show `type: summary`, that's the format; if they show `[ABC-123] summary`, that's the format. Record it as a pattern with a real example.
 
-Then determine branch policy, whether the loop may commit at all, and the pre-commit gate.
+Then determine whether the loop may commit at all, and the pre-commit gate.
+
+**Branch policy needs establishing, not inferring.** A repo with twenty commits shows you a
+naming convention; a repo with one shows you nothing, and "the branch I am standing on" is not
+evidence of a policy. This is the field most likely to be filled in by default rather than by
+decision, and the default is always `main`.
+
+Set the policy from **where this project's quality gate sits**, and say so in the Evidence line:
+
+- **The gate runs before code lands** — CI that blocks the merge, a reviewer, a human reading each
+  change as it happens. Committing to the default branch is defensible, and short-lived branches or
+  none at all is a legitimate practice rather than a lapse. Record what the project actually does.
+- **The gate runs after code lands** — which is *this loop*, by construction. `/orchestrate` commits
+  per task, autonomously, and `security-auditor` reviews the unit's whole change set at close,
+  after every one of those commits exists. A finding there needs somewhere to land. On a branch the
+  answer is "don't merge"; on the default branch the answer is unpicking a dozen commits.
+
+**So for any project without a blocking pre-merge gate, the default is: never commit to the default
+branch.** Observed in a real adopted project: the unit-close audit returned a HIGH finding on both
+of its first two units, and both times the reviewing agent's own words were that it would not merge
+on that. That sentence needs a branch to be worth anything.
+
+Name the branch `<type>/<slug>`, reusing the **same type vocabulary as the commit message format**
+you just recorded — `feat`/`feature`, `fix`, `chore`, `docs`, `refactor`, `test`. One unit, one
+branch. The type describes the *unit*, not the commits inside it: a `fix/` unit may well contain a
+`test:` commit. Recording only `feature/<slug>` is the common error, and it goes wrong the first
+time a unit is a remediation rather than a feature — which for this loop is often the second unit,
+since it is what the first unit's security audit produces.
+
+Bootstrapping is the exception worth stating: the first commit, the scaffolding, `git init` itself.
+Branching there is friction with nothing to protect. The policy starts mattering the moment
+`/orchestrate` begins committing on its own.
 
 **Ask about footprint explicitly, in a shared repo:** should loop files be committed, or stay local? Default to local for any repo with other contributors — teammates seeing unexplained agent config in a PR is a real cost. Local means adding the loop paths to `.git/info/exclude`, which is per-clone and never committed, so the shared `.gitignore` is untouched.
 

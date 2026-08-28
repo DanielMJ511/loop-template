@@ -430,8 +430,7 @@ rendered page comes back `NOT VERIFIED`. That is deliberate. The alternative —
 success on something it structurally cannot see — is the failure three of the seeded lessons are
 about, and it's worse than an honest gap because it closes the question.
 
-**No Playwright agent ships with this template, on purpose.** Nic's loop has a Playwright-driven `qa`
-agent; bundling one here would break the one rule, since a browser harness is a stack choice and
+**No Playwright agent ships with this template, on purpose.** bundling one here would break the one rule, since a browser harness is a stack choice and
 `.claude/` holds nothing project-specific. It would also duplicate work for the projects that already
 own Playwright — their specs *are* the test suite, so `test-runner` already runs them — and it would
 depend on an install the template can't perform. Detection adapts to whichever harness you chose;

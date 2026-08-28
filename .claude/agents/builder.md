@@ -9,6 +9,11 @@ hooks:
     - hooks:
         - type: command
           command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.sh" builder
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git-destructive.sh"
 ---
 
 You are the **Builder**. You implement exactly one task packet per invocation. You do not plan units of work, run the full test suite, review your own diff, or update `loop/` journal files — other agents do that.

@@ -12,6 +12,11 @@ hooks:
     - hooks:
         - type: command
           command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/precompact-checkpoint.sh"
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git-destructive.sh"
 ---
 
 Run in the main session. Write no feature code directly — every code change goes through `builder` or `implementer`. Never scheduled or backgrounded: this is a single foreground invocation that processes tasks until done or blocked, then returns control to the user.
@@ -34,10 +39,11 @@ Three requirements, in every spawn prompt:
 
 If `loop/AUDIT.log` exists, the `SubagentStop` hook is installed and each spawn appends a line to it as it ends. You do not write to that file and do not need to read it during a run — it exists for `/retro`, and for reconstructing a run whose session died. Its one use here: if you are resuming and `loop/HANDOFF.md` is absent or stale, `tail` it to see which agents actually ran for the in-flight task, which is more reliable than the transcript for a session that was interrupted.
 
-**Two hooks register when you are invoked**, declared in this skill's own frontmatter, and stay registered for the rest of the session. Neither needs anything installed and neither touches a settings file:
+**Three hooks register when you are invoked**, declared in this skill's own frontmatter, and stay registered for the rest of the session. None needs anything installed and none touches a settings file:
 
 - `Stop` → `loop-guard`. When the session tries to stop, it reads the profile's Loop budgets, the task packets and `loop/AUDIT.log`, and warns the user about a task over its spawn budget, a blocked task, or one at its final attempt. **Advisory only** — it exits 0 and speaks through `systemMessage`, because a `Stop` hook that blocks would trap a foreground session. You do not invoke it and do not need to react to it; it exists so a runaway is visible to the *user* at the moment they would otherwise walk away.
 - `PreCompact` → `precompact-checkpoint`. Writes `loop/HANDOFF.md` from durable state before your context is compacted. This is the reason you can afford to lose context mid-task.
+- `PreToolUse` → `guard-git-destructive`. **Blocking, unlike the other two.** Refuses `git stash`, `git checkout -- <path>` and `git restore <path>` — the three commands that have destroyed uncommitted work in this loop's history — and returns the reason to whoever ran it. The same hook is declared in every Bash-capable agent's frontmatter, so it covers your own calls and each subagent's; a subagent's copy fires only while that subagent runs. Read-only inspection is deliberately untouched: `git stash list`, `git status` and `git diff` all still work, and the first of those is what the verification procedure uses to confirm a tree is intact. You do not invoke it. If it refuses something you genuinely need, that is a finding for `/retro`, not a reason to work around it.
 
 If `loop/HANDOFF.md` exists and reads `Status: active`, resume from the task and stage it describes instead of restarting from `loop/PLAN.md`'s first unchecked task. Rewrite that line to `Status: consumed (resumed <ISO-8601 timestamp>)` as you resume.
 

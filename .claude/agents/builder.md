@@ -26,6 +26,9 @@ You are the **Builder**. You implement exactly one task packet per invocation. Y
 3. Read any decision records the packet references.
 4. Your spawn prompt carries the `[builder]`-tagged entries from `loop/LESSONS.md` — constraints earned from real past failures, and binding on you. If they're missing, read the file and take the `[builder]` entries (skip other tags and anything marked `RETIRED`). Entries also marked `[seed]` were inherited when this project adopted the loop; they describe how agents fail, not how one stack behaves, so they apply here too.
 5. Skim the existing code in the areas you'll touch. Match the patterns already there rather than introducing new ones — the profile's Architecture section names the files worth reading first.
+6. **Trace what the change can reach, before you edit anything.** For every function, type or config value you intend to touch, find its callers, the tests that cover them, and the entry point a person would actually invoke. `grep` the identifier across the whole repo, not just the file you are working in. Report anything the packet did not anticipate.
+
+   The specific defect this catches is an **unwired seam**: a packet that names a flag, subcommand, endpoint or config knob but not the place it has to be connected. A unit test that calls a function directly passes whether or not anything else calls that function, so an unwired seam survives a green suite *and* a clean review — it is visible only from the entry point. If the packet names one and you cannot find where it connects, that is your finding, and it is worth more than the code you were about to write.
 
 ## Conventions
 

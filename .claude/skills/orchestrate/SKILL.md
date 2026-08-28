@@ -27,7 +27,9 @@ Read `loop/PROFILE.md` (every command below comes from it), `loop/PLAN.md`, `loo
 
 Every lesson carries audience tags (`[planning]`, `[builder]`, `[reviewer]`, `[docs]`, `[testing]`, `[verifier]`, `[security]`). Each spawn below gets only the entries tagged for it, verbatim, and never the whole file — an agent reading another stage's constraints is paying attention tax on things it cannot act on. `/retro` moves retired lessons out to `loop/lessons-archive.md`, which you never read and never pass on; if you find a `RETIRED` entry still sitting in `loop/LESSONS.md`, skip it and mention it at the end of the run.
 
-Every spawn also gets the profile's Commands and Conventions sections. Agents do not read the project's build files to work out how to test it, and they do not infer conventions from whichever file they happened to open.
+**Every spawn also gets the profile's Commands and Conventions sections. That is a floor, and the per-spawn lists below name only what is added on top of it** — never a replacement for it. Agents do not read the project's build files to work out how to test it, and they do not infer conventions from whichever file they happened to open.
+
+Read the floor as additive whenever a spawn list looks narrower than it. Handing an agent a section it cannot act on costs some attention; withholding one it needed costs a wrong answer that looks deliberate, because an agent short of a convention does not stop and ask — it infers one, and the inference reaches review as a considered choice.
 
 **Ground every spawn in the project directory, and require it to confirm before acting.** A subagent inherits the session's working directory, which is not always this project — and an agent that quietly reads the wrong repo produces a confident report about a codebase nobody asked about. Observed in practice: an agent asked to run a gate reported "PROFILE.md does not exist" along with a plausible summary of a completely different project's state, and the mistake was only visible because the two repos used different build tools.
 
@@ -71,11 +73,11 @@ Also run `git status --short` here. Anything already modified before the task st
 
 ## 3. Build
 
-Spawn `builder` with: the task packet, the profile's Commands and Conventions sections, any decision records the packet references, and the `[builder]`-tagged lessons quoted verbatim.
+Spawn `builder` with, on top of the floor: the task packet, any decision records the packet references, and the `[builder]`-tagged lessons quoted verbatim.
 
 ## 4. Test
 
-Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile's Commands and Prerequisites, and the `[testing]`-tagged lessons — what this project's suite has been caught misreporting.
+Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile's Prerequisites on top of the floor, and the `[testing]`-tagged lessons — what this project's suite has been caught misreporting.
 
 - **Pass** → step 4b.
 - **Fail** → increment this task's failure counter and persist it (below):
@@ -111,7 +113,7 @@ When a project has no test suite, say so once at the start of the run and recomm
 - The profile's Runtime verification section says `applicable: yes`.
 - At least one of the packet's acceptance criteria is observable at runtime. A criterion about an internal invariant, a refactor with no behavioural change, or a docs-only task has nothing to observe.
 
-When both hold, spawn `verifier` with the packet's acceptance criteria, the profile's Runtime verification section **including its Browser observation fields**, Prerequisites, and the `[verifier]`-tagged lessons. It starts the app, exercises each criterion, and reports what it observed.
+When both hold, spawn `verifier` with the packet's acceptance criteria, the profile's Runtime verification section **including its Browser observation fields**, Prerequisites — both on top of the floor — and the `[verifier]`-tagged lessons. It starts the app, exercises each criterion, and reports what it observed.
 
 The Browser observation fields decide whether a UI criterion is reachable at all — `verifier` has no browser and drives only the harness this project owns. Omitting them leaves it guessing about the one thing it cannot improvise.
 
@@ -143,7 +145,7 @@ Three details, each of which corrupts the user's index or the review if dropped:
 
 Scope both commands to that snapshot, never to `.` — losing someone's index to a review step is not a trade the loop gets to make.
 
-Spawn `code-reviewer` on that diff — `git diff <the base ref recorded in step 2>`, never a bare `git diff` — with the profile's Conventions section, the `[reviewer]`-tagged lessons, the out-of-scope file list from step 2 if the tree was dirty, and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).
+Spawn `code-reviewer` on that diff — `git diff <the base ref recorded in step 2>`, never a bare `git diff` — with the `[reviewer]`-tagged lessons, the out-of-scope file list from step 2 if the tree was dirty, and a one-line note on the unit's task-ownership split — which task(s), if any, own test coverage for the code this task touches (read `loop/PLAN.md`'s task list to determine this).
 
 Without that note, `code-reviewer` will reasonably flag a diff with new behavior and no tests as a critical finding even when testing is a deliberate, separate, already-planned task. That happened in the loop's origin project and cost an extra review round for a non-defect. Include it on every spawn for a unit with a dedicated test task — don't remember it ad hoc per task.
 
@@ -183,7 +185,7 @@ For each item: spawn `verifier` where it is observable against the running app, 
 
 **An unchecked item at the end of a unit is a result, not an oversight** — it records exactly what the unit did not prove, which is the most useful thing the plan carries into the next one. Do not mark an item verified because the tasks all passed: that is what the item is testing for, and treating it as proof turns the list into a restatement of "the work is done".
 
-**Then spawn `security-auditor` on the unit's cumulative change set** — the range from the commit the unit started at to `HEAD`, plus the working tree if the loop hasn't committed. Give it the unit's goal from `loop/PLAN.md`, the profile's Architecture section, and the `[security]`-tagged lessons — the shapes this codebase has been caught getting wrong before.
+**Then spawn `security-auditor` on the unit's cumulative change set** — the range from the commit the unit started at to `HEAD`, plus the working tree if the loop hasn't committed. Give it the unit's goal from `loop/PLAN.md`, the profile's Architecture section on top of the floor, and the `[security]`-tagged lessons — the shapes this codebase has been caught getting wrong before.
 
 This is the loop's only holistic look at the change set. `code-reviewer` sees one task's diff at a time, so a defect that emerges from how several tasks compose — a route added in one, an authorization check relaxed in another — passes every per-task review while being plain across the unit.
 

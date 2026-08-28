@@ -45,7 +45,7 @@ Look for the same category of problem showing up more than once, not one-off mis
 
 Phrase each as an actionable constraint — something the receiving agent can act on when it's prepended to their prompt — not a narrative retelling.
 
-**Prefer sharpening an existing lesson over adding a parallel one.** If a pattern is a more specific case of a lesson already in the file, say which one it refines and what it adds. A file of narrowing rules stays usable; a file of near-duplicates does not.
+**Prefer sharpening an existing lesson over adding a parallel one.** If a pattern is a more specific case of a lesson already in the file, say which one it refines and what it adds. A file of narrowing rules stays usable; a file of near-duplicates does not. If the refinement *contradicts* a clause of the earlier lesson rather than extending it, also append a supersession pointer to that entry — see step 4.
 
 **Check whether the friction belongs in the profile instead.** A convention agents keep missing, or a command that keeps being wrong, is a profile defect, not a lesson — fix `loop/PROFILE.md` and don't write a lesson telling agents to work around it. A lesson is for how agents fail; the profile is for what this project is.
 
@@ -85,7 +85,19 @@ Be strict about the difference between "hasn't happened yet" and "cannot happen"
 
 Archive the pointer rather than deleting it: it's what stops a future `/retro` from re-deriving the same lesson and re-adding it in full.
 
-Retiring and re-tagging are the only edits permitted to a prior entry. Never rewrite a prior lesson's substance, and never rewrite `loop/STATE.md` history.
+### Mark a lesson that a later one narrows
+
+A lesson is sometimes not retired but **superseded in part**: a later entry proves one of its clauses wrong while the rest still holds. Retiring it would discard the clauses that are still true, and rewriting it is forbidden. Append a pointer to the end of the entry instead, leaving every word of its substance where it is:
+
+```
+**SUPERSEDED IN PART BY → <heading or entry>** (<date>). <Which clause, in a few words.>
+```
+
+Step 2 already has the narrowing entry say which lesson it refines. This is the other direction of that link, and it is the direction that matters at read time: an agent receives its tagged slice in file order and can act on an early entry before it ever reaches the one that corrects it. Without the pointer the superseded clause reads as current advice — which is how a builder followed `git checkout -- <file>` guidance that a later lesson had already shown destroys uncommitted work.
+
+Use this only where a later lesson genuinely contradicts an earlier one. A lesson that adds detail without invalidating anything is a sharpening, not a supersession, and needs no pointer.
+
+Retiring, re-tagging, and appending a supersession pointer are the only edits permitted to a prior entry. Never rewrite a prior lesson's substance, and never rewrite `loop/STATE.md` history.
 
 ## 5. Append
 

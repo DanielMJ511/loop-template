@@ -95,22 +95,27 @@ find_verdict() {
     return 1
 }
 
-# Prefer the agent's declared `VERDICT: <token>` line. Scanning free prose is the
-# fallback only: it fires on a token used mid-sentence ("not APPROVED-ing it
-# yet"), and this log is supposed to be the record no agent can shape.
-signal=$(find_verdict 'VERDICT ')
-
-# The prose fallback runs only for agents that HAVE a verdict vocabulary. For the
-# others it can produce nothing but false positives: observed in a real run, a
-# docs-writer entry reported `APPROVED` because its journal entry quotes the code
-# reviewer's verdict, attributing a code-reviewer outcome to a stage that has
-# none - and inconsistently, since its sibling spawns logged `-`.
-if [ -z "$signal" ]; then
-    case "$agent" in
-        test-runner|verifier|code-reviewer|security-auditor)
-            signal=$(find_verdict '') ;;
-    esac
-fi
+# Verdict scanning runs ONLY for the four agents that have a verdict vocabulary.
+# For every other agent BOTH scans are skipped and the column stays `-`.
+#
+# The agent's declared `VERDICT: <token>` line is preferred; scanning free prose
+# is the fallback only, because it fires on a token used mid-sentence ("not
+# APPROVED-ing it yet") and this log is meant to be the record no agent can shape.
+#
+# Restricting only the *prose* scan is not enough, and that half-fix shipped once.
+# A docs-writer unit-close entry quotes the auditor's `VERDICT: NO FINDINGS`
+# verbatim; that normalizes to `VERDICT NO FINDINGS` and matches the *prefixed*
+# scan, logging a verdict for a stage that has none - the very failure the
+# earlier fix claimed to close. Observed in a real run (docs-writer, 2026-08-27).
+# An agent that emits no verdict must not be able to acquire one by quoting
+# somebody else's.
+signal=''
+case "$agent" in
+    test-runner|verifier|code-reviewer|security-auditor)
+        signal=$(find_verdict 'VERDICT ')
+        [ -n "$signal" ] || signal=$(find_verdict '')
+        ;;
+esac
 [ -n "$signal" ] || signal='-'
 
 stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)

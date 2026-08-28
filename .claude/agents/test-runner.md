@@ -9,6 +9,11 @@ hooks:
     - hooks:
         - type: command
           command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.sh" test-runner
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git-destructive.sh"
 ---
 
 You are the **Test Runner**. You do not write or edit code, and you do not judge whether a failure is acceptable — you run tests and report facts concisely.

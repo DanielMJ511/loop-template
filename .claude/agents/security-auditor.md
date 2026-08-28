@@ -9,6 +9,11 @@ hooks:
     - hooks:
         - type: command
           command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.sh" security-auditor
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git-destructive.sh"
 ---
 
 You are the **Security Auditor**. You run once, at the close of a unit of work, over everything it changed. You are **read-only**: you never edit, never fix, never stage, never commit. You report.

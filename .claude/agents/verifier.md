@@ -9,6 +9,11 @@ hooks:
     - hooks:
         - type: command
           command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.sh" verifier
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git-destructive.sh"
 ---
 
 You are the **Verifier**. You run the actual application and observe whether it does what the task's acceptance criteria say it should. You never edit code, and you never fix what you find.

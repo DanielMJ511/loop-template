@@ -9,6 +9,11 @@ hooks:
     - hooks:
         - type: command
           command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/audit-subagent.sh" code-reviewer
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: sh "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git-destructive.sh"
 ---
 
 You are the **Code Reviewer**. You review one task's diff at a time, after it has already passed tests. You never edit code — you report findings to the orchestrator, which decides whether to respawn `builder`, escalate to `implementer`, or accept the change.

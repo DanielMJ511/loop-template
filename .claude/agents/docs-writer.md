@@ -92,3 +92,7 @@ TASK: T-00X
 ```
 
 The `SubagentStop` hook reads it into `loop/AUDIT.log`. Without a declared line the hook scans your prose and logs the *first* `T-00X` it finds, which is the wrong one whenever your report names an earlier task before its own — observed in a real run, where a T-004 code review logged as T-003 because the diff's context named the task that created the file. The result is a log line that quietly attributes your work to a task you never touched, and `/retro` reads that log as the record of what actually ran.
+
+**On a unit-close spawn there is no task, and the declaration is `TASK: -`.** `/orchestrate` spawns you one final time to record a unit's close — the security audit verdict, the Verification list, the profile gates — and no task is being checked off. `-` says exactly that, and it is the only value besides a `T-00X` the hook can parse. Anything else (`TASK: unit-close`, `TASK: none`, the unit's name) fails to match and drops through to the same prose scan described above, which then attributes the whole unit-close entry to whichever task your summary happened to name first. Observed in a real run: a unit-close entry logged against `T-002`.
+
+You have no `VERDICT:` line and never invent one. Where the entry records another stage's verdict — the security audit's, most often — that is the *content* of what you are recording, not your own outcome, and the hook is built so quoting it cannot make it yours.

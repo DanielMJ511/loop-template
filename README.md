@@ -14,9 +14,10 @@ and no agent has to read this loop's machinery to work out how to adapt to your 
 
 ### Copying it in
 
-23 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
-`settings.json`, so copying the template never touches your own settings — including the six scripts
-in `hooks/`, which the agents and `/orchestrate` register themselves in their own frontmatter. See
+25 files, in four subfolders (`agents/`, `skills/`, `loop-templates/`, `hooks/`). None of them is a
+`settings.json`, so copying the template never touches your own settings — including the eight scripts
+in `hooks/` (four hooks, each with a `.sh` and a `.ps1` twin), which the agents and `/orchestrate`
+register themselves in their own frontmatter. See
 [The audit hook](#the-audit-hook) and [the loop guard](#the-loop-guard-and-the-compaction-checkpoint).
 
 **If the project has no `.claude/` folder yet** — copy the whole folder in:
@@ -345,6 +346,27 @@ hand-written one. There is no second resume mechanism.
 
 The one thing it won't claim is **tree state** — whether a change is half-applied is a judgment, and
 a shell script has no business making it. That field says so and tells you to run `git diff`.
+
+## Changing a hook
+
+The three hooks are the only code in this template; everything else is prose for agents. `tests/`
+holds the one executable check, and it lives outside `.claude/` so it never travels into an adopting
+project:
+
+```bash
+sh tests/run-guard-tests.sh            # both twins (~80s, spawns PowerShell per case)
+sh tests/run-guard-tests.sh --sh-only  # the POSIX twin alone (~5s)
+```
+
+39 cases against `guard-git-destructive`, checking two things — each twin against the expectation,
+**and the two twins against each other.** The second is the one that earns its keep. They diverged
+once, in opposite directions on the same two commands, because `sed` is greedy and .NET's `Match` is
+leftmost: `git stash && git stash list` was refused on Windows and allowed under `sh`, and
+`git stash list && git stash` the other way round. Every platform had a spelling that walked a real
+`git stash` past the guard, and no single-twin run could have seen it.
+
+Run it in full before committing a change to either twin. A `--sh-only` pass is for iterating, not
+for proving.
 
 ## Working in someone else's repo
 

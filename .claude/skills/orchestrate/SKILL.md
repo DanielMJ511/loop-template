@@ -23,7 +23,25 @@ Run in the main session. Write no feature code directly — every code change go
 
 ## 1. Resume or start
 
-Read `loop/PROFILE.md` (every command below comes from it), `loop/PLAN.md`, `loop/LESSONS.md` in full — you are the one who slices it for each agent — and the tail of `loop/STATE.md` (last ~20 entries).
+Read `loop/PROFILE.md` (every command below comes from it), `loop/PLAN.md`, and `loop/LESSONS.md`
+in full — you are the one who slices it for each agent. Then read the **end** of `loop/STATE.md`,
+bounded by size and not by entry count: the last two unit boundaries, or roughly the last 40 KB,
+whichever is smaller.
+
+**Bounded by bytes, because the entry count stopped being one.** This step used to say "the last ~20
+entries", written when a unit produced a handful of them. Measured in an adopting project four units
+in: `STATE.md` held 113 KB across 21 entries, so "the last 20" was the whole file — ~28k tokens,
+64% of everything this step loads, before a single task starts, growing ~35 KB per unit and never
+truncated. A limit that is always larger than the thing it limits is not a limit.
+
+What you need from the journal is the shape of the last unit or two: what closed, what was left
+unchecked and why, which corrections landed against earlier entries. Older history is `/retro`'s to
+read, and it reads the file directly rather than through you.
+
+**Read less, never rewrite.** `STATE.md` stays append-only and whole. Under the default footprint
+nothing in `loop/` is in version control, so a compaction or an archive pass that went wrong would
+destroy the project's only journal with nothing to restore from — and it would buy nothing here,
+because bounding the read has already taken the cost out.
 
 Every lesson carries audience tags (`[planning]`, `[builder]`, `[reviewer]`, `[docs]`, `[testing]`, `[verifier]`, `[security]`). Each spawn below gets only the entries tagged for it, verbatim, and never the whole file — an agent reading another stage's constraints is paying attention tax on things it cannot act on. `/retro` moves retired lessons out to `loop/lessons-archive.md`, which you never read and never pass on; if you find a `RETIRED` entry still sitting in `loop/LESSONS.md`, skip it and mention it at the end of the run.
 
@@ -71,11 +89,46 @@ This matters whenever the profile's commit cadence is anything other than per-ta
 
 Also run `git status --short` here. Anything already modified before the task started will show up in the step 5 diff too — the base is a commit, so it cannot exclude work that was uncommitted when you captured it. Record that file list and pass it to `code-reviewer` as out of scope, or the first task of a run in a dirty tree gets reviewed for changes it did not make.
 
+**Read the packet's `Route:` field.** `/loop-plan` set it from evidence that was in front of it and
+is not in front of you: `full` runs the stages below as written, `direct` collapses steps 3 and 4
+into one spawn. Two defaults, both deliberately conservative:
+
+- **A packet with no `Route:` line is `full`.** The field postdates this machinery, and a packet
+  written before it must not be routed onto the cheaper path by the absence of the field that would
+  have authorized it.
+- **If the profile's Loop budgets section reads `Direct route: disabled`, every packet is `full`**,
+  whatever it says. Project policy outranks a packet.
+
 ## 3. Build
 
-Spawn `builder` with, on top of the floor: the task packet, any decision records the packet references, and the `[builder]`-tagged lessons quoted verbatim.
+**On the `full` route.** Spawn `builder` with, on top of the floor: the task packet, any decision
+records the packet references, and the `[builder]`-tagged lessons quoted verbatim. Then step 4.
+
+**On the `direct` route.** Spawn `builder` once with all of the above **plus** the profile's
+Prerequisites and the `[testing]`-tagged lessons, and require it to run the profile's test command
+itself and report the measured output behind a `VERDICT:` line. Apply step 4's outcome rules to that
+report exactly as though `test-runner` had produced it — same counter, same rungs, same prerequisite
+exemption — then continue to step 4b. Do not spawn `test-runner` as well; that is the whole saving.
+
+**Never write the code yourself to save a spawn, on either route.** The collapse is one spawn doing
+two jobs; it is not work done here. A change made in this session produces no `SubagentStop` line at
+all, which makes it invisible to the loop guard, to `/retro`, and to every measurement either can
+perform — so the cheapest-looking shortcut is the one that destroys the record the loop is built on.
+
+A `direct` builder reports `TESTS PASSED`, `TESTS FAILED` or `NO TESTS EXECUTED` — `test-runner`'s
+vocabulary, because `loop/AUDIT.log`'s verdict column has to mean one thing regardless of which
+stage produced it. **Read a self-reported pass as weaker evidence than `test-runner`'s**: it comes
+from the agent that wrote the code. That weakness is priced into the route's eligibility conditions,
+and it is why a task whose evidence *is* the suite result is never `direct`.
 
 ## 4. Test
+
+**On the `direct` route this stage is not spawned** — step 3's `builder` already ran the suite and
+reported it. Everything below still governs what happens to that report: the ladder, the counter,
+the prerequisite exemption and the empty-gate rules are the same, and are applied to the builder's
+verdict exactly as they would be to `test-runner`'s. Read "spawn `test-runner`" below as "respawn
+`builder` on the direct route" wherever the ladder calls for a re-test — a promoted task drops back
+to the full route and this stage resumes normally.
 
 Spawn `test-runner` on `builder`'s (or `implementer`'s) output, with the profile's Prerequisites on top of the floor, and the `[testing]`-tagged lessons — what this project's suite has been caught misreporting.
 
@@ -151,6 +204,18 @@ Without that note, `code-reviewer` will reasonably flag a diff with new behavior
 
 - **Critical finding on the task's first review pass** (builder's first attempt, not yet escalated): escalate straight to `implementer` with the findings — do not spend a retry looping `builder` on a critical finding.
 - **Non-critical findings, or any finding on a later pass**: respawn whichever agent is active for this task with the feedback appended. Return to step 4 (re-test), then re-review. Same bounded-retry counter as step 4 — a review-triggered respin counts toward the escalation threshold.
+- **Any finding on a `direct` task, at any severity**: promote it to the full route before doing
+  anything else. Record the promotion in the packet's `Status:` line — `promoted to full route
+  after a review finding — <one line>` — and leave `Route:` as `/loop-plan` wrote it, so the plan
+  still shows what planning chose and `/retro` can count how often planning was wrong. Then restart
+  the ladder at attempt 1, running steps 3 and 4 as separate spawns.
+
+  Restarting rather than continuing is deliberate: a finding on a direct task is evidence that the
+  eligibility conditions did not hold, so the attempt that produced it was not a fair one. It does
+  hand the task a fresh budget, which is the obvious way this rule could be abused by a genuinely
+  bad task — the loop guard is the backstop, because it counts spawns from `loop/AUDIT.log` and
+  never from the counter, so a task cycling through promotions still trips its budget.
+
 - **Approved**: step 6.
 
 ## 6. Record
@@ -158,6 +223,12 @@ Without that note, `code-reviewer` will reasonably flag a diff with new behavior
 Set the packet's `Status:` to `done (<n> attempt(s))` — you own that field, not `docs-writer`. Leaving it at `attempt 2 of 3` on a task that passed makes a later resume think the ladder is still live.
 
 Spawn `docs-writer` to append the `loop/STATE.md` entry, check off the task in `loop/PLAN.md`, and draft a decision record only if one is warranted. Pass the `[docs]`-tagged lessons — these are the constraints on what may be stated as fact in a document that outlives this session.
+
+**Pass the route the task actually ran on, and whether it was promoted.** One line in the entry:
+which route, and if promoted, what finding caused it. Nothing else records this — `Route:` holds
+what planning chose and `Status:` is overwritten as the ladder moves, so without it the journal
+cannot answer whether the direct route is paying for itself, which is the only question that
+decides whether it stays.
 
 If the task surfaced work you deliberately did not do — a reviewer finding ruled out of scope, a problem found while testing — do not let it live only in a `loop/STATE.md` paragraph. Follow "Filing follow-up work" below.
 

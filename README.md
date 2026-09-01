@@ -296,7 +296,7 @@ Each of those agents ends its report with a `VERDICT: <token>` line, which is wh
 Scanning the report's prose is only a fallback, and a poor one: it can't read a negation, so
 "I am not APPROVED-ing this yet" logs as `APPROVED`.
 
-Two things all three hooks need, both of which fail silently:
+Two things all four hooks need, both of which fail silently:
 
 - **`jq` or `python3` on PATH**, to read the hook payload. With neither, you get an empty log that
   looks identical to "nothing has run yet".
@@ -349,13 +349,15 @@ a shell script has no business making it. That field says so and tells you to ru
 
 ## Changing a hook
 
-The three hooks are the only code in this template; everything else is prose for agents. `tests/`
-holds the one executable check, and it lives outside `.claude/` so it never travels into an adopting
+The four hooks are the only code in this template; everything else is prose for agents. `tests/`
+holds the executable checks, and lives outside `.claude/` so it never travels into an adopting
 project:
 
 ```bash
 sh tests/run-guard-tests.sh            # both twins (~80s, spawns PowerShell per case)
 sh tests/run-guard-tests.sh --sh-only  # the POSIX twin alone (~5s)
+sh tests/run-audit-tests.sh            # audit-subagent, both twins
+sh tests/run-audit-tests.sh --sh-only  # the POSIX twin alone
 ```
 
 39 cases against `guard-git-destructive`, checking two things — each twin against the expectation,
@@ -365,8 +367,15 @@ leftmost: `git stash && git stash list` was refused on Windows and allowed under
 `git stash list && git stash` the other way round. Every platform had a spelling that walked a real
 `git stash` past the guard, and no single-twin run could have seen it.
 
-Run it in full before committing a change to either twin. A `--sh-only` pass is for iterating, not
-for proving.
+23 cases against `audit-subagent`, in the same shape and for a sharper reason: `loop/AUDIT.log` is
+the record no agent can shape, so a defect there is silent by construction. Both of the ones it has
+had shipped past a read-through — the prose scan attributing a T-004 review to T-003 because the
+diff's context named the creating task first, and `docs-writer` acquiring `NO FINDINGS` by quoting
+the auditor verbatim, which the first fix claimed to close and did not. Both are cases in the file.
+
+Run either in full before committing a change to a twin. A `--sh-only` pass is for iterating, not
+for proving — and when no PowerShell is on `PATH` both runners say so rather than reporting a pass
+they did not perform.
 
 ## Working in someone else's repo
 
@@ -386,7 +395,43 @@ policy, and won't commit at all if you tell it not to.
   oversight — the cost is in what each spawn carries, which is why lessons are sliced and why every
   agent has a length budget on what it hands the next one. Budget for more than that on a bad task:
   one that fails twice and escalates costs roughly nine, since each respin re-runs verification and
-  review too.
+  review too. The one sanctioned discount is [the direct route](#the-direct-route), and it removes a
+  spawn rather than a stage.
+
+## The direct route
+
+Most of what a task costs has nothing to do with its size. The profile's Commands and Conventions
+floor plus the audience-sliced lessons reach *every* spawn, and a clean task spends four of them —
+measured in one adopting project, ~15k tokens of preamble per task before a line of the packet is
+read. So a one-line change and a subsystem cost within a factor of two of each other.
+
+Two levers, and they are deliberately separate because only one of them is likely to be worth it.
+
+**The one that matters is task count.** `/loop-plan` now has a lower bound on task size to go with
+its upper one: mechanical changes that restore **one** invariant become **one** task, not one per
+site. It reuses the enumeration the planner already does — state the invariant, derive the search
+that finds every violation, record the command — so the batch is just that search's result set. Two
+guards keep a batch from becoming one giant task: every member shares an acceptance-criteria shape,
+and no member carries its own `[runtime]` criterion, because `verifier` attributes those per task.
+
+**The one to be suspicious of is stage collapsing.** A packet may carry `Route: direct`, and
+`/orchestrate` then folds the test stage into the build spawn: three spawns instead of four.
+`/loop-plan` decides it, from evidence and never from size — no runtime criteria, no new files, one
+file or one already-batched mechanical pattern, and the suite's result must not be the evidence for
+the change. A missing `Route:` line means `full`, and `Direct route: disabled` in the profile
+outranks any packet.
+
+**The route buys a spawn by giving up an independent test verdict** — a direct builder reports on
+code it wrote. So it is self-correcting rather than trusted: any review finding promotes the task to
+the full route, records the promotion in `Status:`, and restarts the ladder. If promotions run above
+roughly one task in four, the eligibility test is wrong and the route is costing more than it saves.
+`loop/AUDIT.log` is where you check, and the loop guard still counts spawns from the log rather than
+the counter, so a task cycling through promotions trips its budget anyway.
+
+**Neither lever moves work into the main session.** A change made there produces no `SubagentStop`
+line at all, which makes it invisible to the loop guard, to `/retro`, and to every measurement
+either can perform. Every code change stays in a spawn — that is what makes the saving measurable
+instead of merely felt.
 
 ## The security audit
 

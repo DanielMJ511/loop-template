@@ -111,8 +111,18 @@ try {
     # none - the very failure the earlier fix claimed to close. Observed in a
     # real run (docs-writer, 2026-08-27). An agent that emits no verdict must not
     # be able to acquire one by quoting somebody else's. The .sh twin does this.
-    $verdictAgents = @('test-runner', 'verifier', 'code-reviewer', 'security-auditor')
-    $prefixes = if ($verdictAgents -contains $agent) { @('VERDICT ', '') } else { @() }
+    # `builder` is a third case: it carries a verdict ONLY on the direct route,
+    # where /orchestrate folds the test stage into its spawn. It therefore gets
+    # the declared-line scan and NOT the prose fallback - on the full route it
+    # writes about tests it did not run and about the guard it proved, which is
+    # exactly the prose that would mint a verdict out of nothing. A full-route
+    # builder emits no `VERDICT:` line, and its column stays `-`. The .sh twin
+    # does this.
+    $verdictAgents      = @('test-runner', 'verifier', 'code-reviewer', 'security-auditor')
+    $declaredOnlyAgents = @('builder')
+    $prefixes = if ($verdictAgents -contains $agent) { @('VERDICT ', '') }
+                elseif ($declaredOnlyAgents -contains $agent) { @('VERDICT ') }
+                else { @() }
 
     $padded = " $norm "
     $signal = '-'

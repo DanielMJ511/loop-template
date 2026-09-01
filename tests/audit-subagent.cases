@@ -1,0 +1,68 @@
+# Cases for .claude/hooks/audit-subagent.{sh,ps1}.
+#
+# Format: <agent>|<expected task>|<expected verdict>|<last_assistant_message>
+#   <agent>           value for the payload's agent_type. Use `-` to send no
+#                     agent_type and pass `test-runner` as the argument instead,
+#                     which exercises the $1 / -AgentName fallback path.
+#   <expected task>   the T-00X or `-` the hook should record.
+#   <expected verdict> the verdict token, or `-` for none.
+#   <message>         single line. `\n` is expanded to a newline, which is what
+#                     exercises the hook's flattening.
+#
+# Blank lines and lines starting with # are ignored. Both twins run over this
+# same list and their columns are diffed against each other as well as against
+# the expectation, for the same reason the guard's cases are: the twins have
+# silently disagreed before, and a log whose contents depend on which shell the
+# harness picked cannot be the record no agent can shape.
+
+# --- the declared TASK line, which is the whole point of the field ---
+builder|T-001|-|TASK: T-001\nImplemented the packet.
+builder|T-042|-|TASK: T-042\nDone.
+test-runner|T-003|TESTS PASSED|TASK: T-003\nRan the suite.\nVERDICT: TESTS PASSED
+code-reviewer|T-007|APPROVED|TASK: T-007\nVERDICT: APPROVED
+
+# --- `-` is a real declaration, and the only way a unit-scoped agent says
+#     "no task" rather than having one inferred from its prose ---
+docs-writer|-|-|TASK: -\nUnit close recorded for the security remediation unit.
+security-auditor|-|NO FINDINGS|TASK: -\nAudited the unit.\nVERDICT: NO FINDINGS
+
+# --- the prose fallback: used only when no TASK line was declared, and it logs
+#     the FIRST id in the report, which is why the declaration exists. A T-004
+#     review really did log as T-003 because the diff context named the file's
+#     creating task first. ---
+code-reviewer|T-003|APPROVED|Reviewing the change T-003 introduced, now extended by T-004.\nVERDICT: APPROVED
+builder|-|-|No task id anywhere in this report.
+
+# --- verdict vocabulary ordering. Matching is substring-based on word-bounded
+#     text, so the negative token MUST be tested before the positive one or the
+#     verdict logs as its own opposite. ---
+verifier|T-002|NOT VERIFIED|TASK: T-002\nVERDICT: NOT VERIFIED
+verifier|T-002|VERIFIED|TASK: T-002\nVERDICT: VERIFIED
+security-auditor|T-005|NO FINDINGS|TASK: T-005\nVERDICT: NO FINDINGS
+security-auditor|T-005|FINDINGS|TASK: T-005\nVERDICT: FINDINGS
+test-runner|T-006|NO TESTS EXECUTED|TASK: T-006\nVERDICT: NO TESTS EXECUTED
+test-runner|T-006|TESTS FAILED|TASK: T-006\nVERDICT: TESTS FAILED
+
+# --- an agent with no verdict vocabulary cannot acquire one, even by quoting.
+#     docs-writer quoting the auditor verbatim normalizes to `VERDICT NO
+#     FINDINGS` and matched the prefixed scan until the scan was restricted by
+#     agent. Observed in a real run, 2026-08-27. ---
+docs-writer|T-004|-|TASK: T-004\nThe auditor reported VERDICT: NO FINDINGS for this unit.
+implementer|T-008|-|TASK: T-008\nEscalated fix applied; the suite is green. VERDICT: TESTS PASSED
+
+# --- builder on the direct route: declared line only, no prose fallback.
+#     A full-route builder writes about tests it did not run and about the guard
+#     it proved, which is exactly the prose that would mint a verdict from
+#     nothing - so only the declared line counts. ---
+builder|T-009|TESTS PASSED|TASK: T-009\nRan the profile's suite.\nVERDICT: TESTS PASSED
+builder|T-010|NO TESTS EXECUTED|TASK: T-010\nVERDICT: NO TESTS EXECUTED
+builder|T-011|BLOCKED|TASK: T-011\nThe container runtime is down.\nVERDICT: BLOCKED
+builder|T-012|-|TASK: T-012\nProved the guard can fail; TESTS PASSED when I restored it.
+builder|T-013|-|TASK: T-013\nI am not APPROVED-ing my own work, and TESTS FAILED earlier.
+
+# --- the documented weakness of the prose fallback, asserted so that changing
+#     it is visible rather than silent: it cannot read a negation. ---
+code-reviewer|T-014|APPROVED|TASK: T-014\nI am not APPROVED-ing this yet.
+
+# --- agent_type absent: the hook falls back to the name passed as an argument ---
+-|T-015|TESTS PASSED|TASK: T-015\nVERDICT: TESTS PASSED

@@ -298,8 +298,17 @@ Scanning the report's prose is only a fallback, and a poor one: it can't read a 
 
 Two things all four hooks need, both of which fail silently:
 
-- **`jq` or `python3` on PATH**, to read the hook payload. With neither, you get an empty log that
-  looks identical to "nothing has run yet".
+- **A working JSON reader on PATH** — `jq`, `python3`, or `perl`, tried in that order and each one
+  *probed* rather than merely detected. With none, you get an empty log that looks identical to
+  "nothing has run yet".
+
+  **Detection by presence is not enough, and this bit for real.** On Windows, `python3` commonly
+  resolves to the Microsoft Store App Execution Alias: it satisfies `command -v`, prints "Python
+  was not found", exits 49, and writes nothing. Every hook then read empty fields and did nothing —
+  including `guard-git-destructive`, which let a real `git stash` through with no error anywhere,
+  on a machine where the documented check ("is `jq` or `python3` on PATH?") said everything was
+  fine. `perl` is in the list because it ships with Git for Windows, which is already the
+  prerequisite below, so a Git Bash box parses with nothing to install.
 - **Git Bash, on Windows.** Claude Code runs hook commands through bash, falling back to PowerShell
   on Windows only when Git Bash isn't installed — so the shipped `sh` command works whenever Git
   Bash is present, *even though `sh` is not on the Windows `PATH`*. Don't test the `PATH`; test for
@@ -374,8 +383,15 @@ diff's context named the creating task first, and `docs-writer` acquiring `NO FI
 the auditor verbatim, which the first fix claimed to close and did not. Both are cases in the file.
 
 Run either in full before committing a change to a twin. A `--sh-only` pass is for iterating, not
-for proving — and when no PowerShell is on `PATH` both runners say so rather than reporting a pass
-they did not perform.
+for proving.
+
+**Both suites run both twins on both platforms.** Under WSL2 the `.ps1` is reached through Windows
+interop (`powershell.exe` plus a `wslpath -w` path); under Git Bash it is the native `powershell`
+with a `cygpath -w` path. Both pass `-ExecutionPolicy Bypass`, which is required rather than
+cosmetic: the default policy on client Windows is `Restricted`, and a script that is blocked writes
+nothing to stdout — which the runner would otherwise score as `allow` for every case. Each runner
+also probes its interpreter with one known case before printing any result, so "PowerShell could
+not run the twin" never masquerades as "the twin passed".
 
 ## Working in someone else's repo
 

@@ -41,16 +41,40 @@
 raw=$(cat)
 [ -n "$raw" ] || exit 0
 
-# .tool_input.command, via whichever parser exists. jq is not installed
-# everywhere - audit-subagent.sh carries the same two-parser fallback.
-if command -v jq >/dev/null 2>&1; then
-    cmd=$(printf '%s' "$raw" | jq -r '.tool_input.command // ""' 2>/dev/null)
-elif command -v python3 >/dev/null 2>&1; then
-    cmd=$(printf '%s' "$raw" | python3 -c \
-        'import sys,json;print((json.load(sys.stdin).get("tool_input") or {}).get("command") or "")' 2>/dev/null)
-else
-    exit 0
-fi
+# .tool_input.command, via a reader chosen by PROBING it, never by `command -v`
+# alone - audit-subagent.sh carries the same three-way selection.
+#
+# This block is why the probe exists. On Windows, `python3` commonly resolves to
+# the Microsoft Store App Execution Alias: it satisfies `command -v`, prints
+# "Python was not found", exits 49, and writes nothing. `cmd` was then empty,
+# the guard hit the fail-open below, and a real `git stash` - the command that
+# destroyed work twice in this project's history - went straight through, with
+# no error anywhere. Measured on Windows 11 + Git Bash, jq absent.
+#
+# perl is third because it ships with Git for Windows, which is already this
+# template's Windows prerequisite, so a Git Bash box parses with nothing to
+# install. The .ps1 twin needs none of this - it has ConvertFrom-Json.
+JSON_READER=''
+for _c in jq python3 perl; do
+    command -v "$_c" >/dev/null 2>&1 || continue
+    case $_c in
+        jq)      _v=$(printf '{"k":"v"}' | jq -r '.k // ""' 2>/dev/null) ;;
+        python3) _v=$(printf '{"k":"v"}' | python3 -c \
+                     'import sys,json;print(json.load(sys.stdin).get("k") or "")' 2>/dev/null) ;;
+        perl)    _v=$(printf '{"k":"v"}' | perl -MJSON::PP -e \
+                     'my $d=eval{JSON::PP->new->decode(do{local $/;<STDIN>})};print defined $d->{k} ? $d->{k} : ""' 2>/dev/null) ;;
+    esac
+    [ "$_v" = v ] && { JSON_READER=$_c; break; }
+done
+
+case $JSON_READER in
+    jq)      cmd=$(printf '%s' "$raw" | jq -r '.tool_input.command // ""' 2>/dev/null) ;;
+    python3) cmd=$(printf '%s' "$raw" | python3 -c \
+                 'import sys,json;print((json.load(sys.stdin).get("tool_input") or {}).get("command") or "")' 2>/dev/null) ;;
+    perl)    cmd=$(printf '%s' "$raw" | perl -MJSON::PP -e \
+                 'my $d=eval{JSON::PP->new->decode(do{local $/;<STDIN>})};my $v=eval{$d->{tool_input}{command}};print defined $v ? $v : ""' 2>/dev/null) ;;
+    *)       exit 0 ;;
+esac
 [ -n "$cmd" ] || exit 0
 
 # Collapse whitespace so the patterns below need only handle single spaces.
@@ -138,10 +162,11 @@ msg="Refused: \`$(printf '%s' "$norm" | cut -c1-120)\`. $reason Take an out-of-t
 # and shell metacharacters the agent typed - and a hand-rolled sed escape was
 # observed here emitting an EMPTY reason for a command containing backslashes,
 # which reaches the agent as a refusal with no explanation at all. Uses the same
-# parser that read the payload above; the .ps1 twin uses ConvertTo-Json.
-if command -v jq >/dev/null 2>&1; then
-    printf '%s' "$msg" | jq -Rsc '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:.}}'
-else
-    printf '%s' "$msg" | python3 -c 'import sys,json;print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":sys.stdin.read()}},separators=(",",":")))'
-fi
+# reader selected above; the .ps1 twin uses ConvertTo-Json. Falling through
+# this case with no reader is impossible: an unreadable payload exits earlier.
+case $JSON_READER in
+    jq)      printf '%s' "$msg" | jq -Rsc '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:.}}' ;;
+    python3) printf '%s' "$msg" | python3 -c 'import sys,json;print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":sys.stdin.read()}},separators=(",",":")))' ;;
+    perl)    printf '%s' "$msg" | perl -MJSON::PP -e 'my $m=do{local $/;<STDIN>};print JSON::PP->new->canonical(0)->encode({hookSpecificOutput=>{hookEventName=>"PreToolUse",permissionDecision=>"deny",permissionDecisionReason=>$m}})' ;;
+esac
 exit 0

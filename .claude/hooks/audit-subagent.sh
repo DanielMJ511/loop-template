@@ -14,13 +14,38 @@
 raw=$(cat)
 [ -n "$raw" ] || exit 0
 
+# Pick a JSON reader by PROBING it, never by `command -v` alone. On Windows,
+# `python3` commonly resolves to the Microsoft Store App Execution Alias: it
+# satisfies `command -v`, prints "Python was not found", exits 49, and writes
+# nothing to stdout. Presence-detection therefore picked a reader that returns
+# empty for every field, which disabled this hook silently - and the same bug
+# left the blocking git guard allowing a real `git stash` through. Measured on
+# Windows 11 + Git Bash with jq absent.
+#
+# perl is third because it ships with Git for Windows, which is already this
+# template's Windows prerequisite, so a Git Bash box parses with nothing to
+# install. The .ps1 twin needs none of this - it has ConvertFrom-Json.
+JSON_READER=''
+for _c in jq python3 perl; do
+    command -v "$_c" >/dev/null 2>&1 || continue
+    case $_c in
+        jq)      _v=$(printf '{"k":"v"}' | jq -r '.k // ""' 2>/dev/null) ;;
+        python3) _v=$(printf '{"k":"v"}' | python3 -c \
+                     'import sys,json;print(json.load(sys.stdin).get("k") or "")' 2>/dev/null) ;;
+        perl)    _v=$(printf '{"k":"v"}' | perl -MJSON::PP -e \
+                     'my $d=eval{JSON::PP->new->decode(do{local $/;<STDIN>})};print defined $d->{k} ? $d->{k} : ""' 2>/dev/null) ;;
+    esac
+    [ "$_v" = v ] && { JSON_READER=$_c; break; }
+done
+
 json_get() {
-    if command -v jq >/dev/null 2>&1; then
-        printf '%s' "$raw" | jq -r --arg k "$1" '.[$k] // ""' 2>/dev/null
-    elif command -v python3 >/dev/null 2>&1; then
-        printf '%s' "$raw" | python3 -c \
-            'import sys,json;print(json.load(sys.stdin).get(sys.argv[1]) or "")' "$1" 2>/dev/null
-    fi
+    case $JSON_READER in
+        jq)      printf '%s' "$raw" | jq -r --arg k "$1" '.[$k] // ""' 2>/dev/null ;;
+        python3) printf '%s' "$raw" | python3 -c \
+                     'import sys,json;print(json.load(sys.stdin).get(sys.argv[1]) or "")' "$1" 2>/dev/null ;;
+        perl)    printf '%s' "$raw" | perl -MJSON::PP -e \
+                     'my $d=eval{JSON::PP->new->decode(do{local $/;<STDIN>})};my $v=$d->{$ARGV[0]};print defined $v ? $v : ""' "$1" 2>/dev/null ;;
+    esac
 }
 
 # Write only inside a project that has adopted the loop. cwd is the authority on

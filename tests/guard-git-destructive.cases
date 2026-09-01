@@ -1,0 +1,73 @@
+# Cases for .claude/hooks/guard-git-destructive.{sh,ps1}.
+#
+# Format: <expected>|<command>, where <expected> is BLOCK or allow.
+# Blank lines and lines starting with # are ignored.
+#
+# Both twins are run over this same list and their verdicts are diffed against
+# each other as well as against the expectation. The diff is the point: the two
+# have silently disagreed before, and a guard whose behaviour depends on which
+# shell the harness picked is worse than no guard, because it is trusted.
+
+# --- stash: the write forms ---
+BLOCK|git stash
+BLOCK|git stash push -m wip
+BLOCK|git stash -u
+BLOCK|git stash pop
+BLOCK|git stash apply
+BLOCK|git stash drop
+BLOCK|git stash clear
+
+# --- stash: the read-only forms the loop's own verification depends on ---
+allow|git stash list
+allow|git stash show
+allow|git stash show -p
+
+# --- stash: compound commands. Each twin used to classify ONE occurrence, and
+# --- a different one, so each of the first two slipped past on one platform.
+BLOCK|git stash && git stash list
+BLOCK|git stash list && git stash
+BLOCK|git stash list; git stash push
+allow|git stash list && git status
+BLOCK|git -C /srv/stash stash pop
+allow|git -C /srv/stash stash list
+
+# --- checkout with a pathspec. A ref between the subcommand and the pathspec
+# --- used to defeat the match entirely; `git checkout HEAD -- <path>` is the
+# --- form an agent reaches for most often.
+BLOCK|git checkout -- src/a.ts
+BLOCK|git checkout .
+BLOCK|git checkout HEAD -- src/a.ts
+BLOCK|git checkout HEAD~1 -- src/a.ts
+BLOCK|git checkout origin/main -- config.json
+BLOCK|git checkout abc1234 -- a.ts b.ts
+BLOCK|git checkout main .
+BLOCK|git -C /repo checkout -- a.ts
+BLOCK|git checkout -- 'my file.ts'
+
+# --- checkout without a pathspec: switching branches is not the failure mode,
+# --- and the bare-`.` branch must not reach across a shell operator.
+allow|git checkout main
+allow|git checkout -b feat/x
+allow|git checkout feature/v.1
+allow|git checkout main && cd .
+allow|git checkout -b fix/y && npm test .
+
+# --- read-only inspection stays available; blocking it would break the check
+# --- that catches this class of incident in the first place.
+allow|git status .
+allow|git diff HEAD -- src/a.ts
+allow|git log --oneline .
+
+# --- restore ---
+BLOCK|git restore src/a.ts
+allow|git restore --staged src/a.ts
+BLOCK|git restore --staged --worktree src/a.ts
+BLOCK|git restore --source=HEAD a.ts
+
+# --- unrelated commands ---
+allow|npm run build
+
+# --- KNOWN AND ACCEPTED: matching is deliberately whole-string so a command
+# --- hidden behind && or in a subshell is still caught. The price is that
+# --- quoting does not hide a mention either. It fails in the safe direction.
+BLOCK|echo "git stash is dangerous"

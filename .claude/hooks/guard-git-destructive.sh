@@ -17,9 +17,10 @@
 # Refuses:
 #   git stash ...             - sweeps up every uncommitted change in the tree,
 #                               including other tasks' work
-#   git checkout -- <path>    - reverts to the last COMMIT, discarding your own
-#   git checkout .              in-progress edits along with whatever you meant
-#                               to undo
+#   git checkout [<ref>] --   - reverts to that commit, discarding your own
+#   git checkout [<ref>] .      in-progress edits along with whatever you meant
+#                               to undo. The ref is optional and usually there:
+#                               `git checkout HEAD -- <path>` is the common form.
 #   git restore <path>        - same, modern spelling
 #
 # Deliberately still allowed:
@@ -59,23 +60,62 @@ norm=$(printf '%s' "$cmd" | tr '\n\r\t' '   ' | tr -s ' ')
 
 # `git` followed by any number of leading options (-C <path>, --no-pager, ...)
 # and then the subcommand.
-git_sub() { printf '%s' "$norm" | grep -qE "(^|[^A-Za-z0-9_-])git( +-{1,2}[^ ]+( +[^ -][^ ]*)?)* +$1( |$)" ; }
+GIT_PREFIX='(^|[^A-Za-z0-9_-])git( +-{1,2}[^ ]+( +[^ -][^ ]*)?)* +'
+git_sub() { printf '%s' "$norm" | grep -qE "$GIT_PREFIX$1( |$)" ; }
 
 reason=''
 
 # 1. git stash - except the two read-only subcommands.
+#
+# EVERY `git stash` in the command is classified, not one of them. Extracting a
+# single occurrence was the earlier shape, and it picked a different one on each
+# platform: `sed` matches greedily so it took the LAST, .NET's Match is leftmost
+# so it took the FIRST. `git stash && git stash list` was therefore refused on
+# Windows and allowed here, and `git stash list && git stash` refused here and
+# allowed on Windows - so on either platform there was a spelling that walked a
+# real stash straight past the guard. One dangerous occurrence now refuses the
+# whole command.
+#
+# This half fails CLOSED, unlike the payload read above: if git_sub finds a stash
+# the scan cannot classify, the command is refused. Guessing permissively about
+# an unrecognised spelling of a work-destroying command costs the user their
+# tree; guessing strictly costs them one retry.
 if git_sub stash; then
-    sub=$(printf '%s' "$norm" | sed -n 's/.* stash *\([a-z]*\).*/\1/p' | head -1)
-    case "$sub" in
-        list|show) : ;;
-        *) reason="git stash sweeps up every uncommitted change in the tree, including work belonging to other tasks. Two incidents in this project's history lost work to it." ;;
-    esac
+    reason="git stash sweeps up every uncommitted change in the tree, including work belonging to other tasks. Two incidents in this project's history lost work to it."
+    occurrences=$(printf '%s' "$norm" | grep -oE "${GIT_PREFIX}stash( +[A-Za-z][A-Za-z-]*)?")
+    if [ -n "$occurrences" ]; then
+        all_safe=1
+        _oldifs=$IFS
+        IFS='
+'
+        set -- $occurrences
+        IFS=$_oldifs
+        for _occ do
+            # Strip through the subcommand keyword. `##` takes the LAST `stash`
+            # in the occurrence, so a `-C /srv/stash` option earlier in the same
+            # match cannot be mistaken for it.
+            _sub=${_occ##*stash}
+            _sub=${_sub# }
+            case "$_sub" in
+                list|show) : ;;
+                *) all_safe=0 ;;
+            esac
+        done
+        [ "$all_safe" = 1 ] && reason=''
+    fi
 fi
 
 # 2. git checkout with a pathspec - the `--` form or a bare `.`.
+#
+# A ref may sit between the subcommand and the pathspec, and the earlier pattern
+# admitted only `-`-prefixed options there - so `git checkout HEAD -- <path>`,
+# the most common spelling of this failure by some margin, matched nothing and
+# was allowed. Intervening tokens are now unrestricted apart from the shell
+# operators, which is what stops the bare-`.` branch reaching across an `&&`
+# into an unrelated `cd .`.
 if [ -z "$reason" ] && git_sub checkout; then
-    if printf '%s' "$norm" | grep -qE ' checkout( +-{1,2}[^ ]+)* +(--( |$)|\.( |$))'; then
-        reason="git checkout -- <path> reverts the file to the last COMMIT, discarding your own in-progress edits along with whatever you meant to undo. It is safe only when the file has no other uncommitted work, which is almost never true mid-task."
+    if printf '%s' "$norm" | grep -qE ' checkout( +[^ &|;]+)* +(--( |$)|\.( |$))'; then
+        reason="git checkout [<ref>] -- <path> reverts the file to that commit, discarding your own in-progress edits along with whatever you meant to undo. It is safe only when the file has no other uncommitted work, which is almost never true mid-task."
     fi
 fi
 

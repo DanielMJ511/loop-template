@@ -68,6 +68,34 @@ Read the existing source files for the areas the work touches — the profile's 
 
 Break the work into concrete `T-00X` tasks. Each should be small enough for `builder` to complete and get reviewed in one pass, but large enough to be a coherent unit. Prefer a task that delivers a working slice over a task that delivers a layer.
 
+**That is the upper bound. The lower bound is missing, and its absence costs more.** Mechanical
+changes that restore **one** invariant become **one** task, not one task per site.
+
+A task carries a fixed overhead that has nothing to do with its size: the profile's Commands and
+Conventions floor and the audience-sliced lessons reach *every* spawn, and a clean task spends four
+of them. Measured in one adopting project, that floor is ~15k tokens per task before a line of the
+packet is read. Splitting one invariant across five sites pays it five times for no additional
+evidence — the five reviews check the same rule against the same pattern, and the five journal
+entries say the same thing five ways.
+
+Decide the batch the way step 2 already decides scope, and reuse that work rather than repeating it:
+write the invariant in one sentence, derive the search that finds every violation of it, run that
+search, and record the command in the packet. For a "fix instances of X" unit step 2 has already
+produced exactly that search, and the batch is its result set.
+
+Two guards, so a batch cannot quietly become one giant task:
+
+- **Every member shares one acceptance-criteria shape.** A batch whose members need different
+  evidence is not one invariant but several, and it splits.
+- **No member carries its own `[runtime]` criterion.** `verifier` attributes runtime observations
+  per task, and a batch collapses that attribution — so a unit with runtime criteria stays split
+  even where the edits look identical.
+
+A batch is one packet with one `Status:` line, so the escalation ladder applies to it whole: a batch
+that fails twice escalates once rather than five times. That is the saving. It is also the risk —
+a batch that was really several invariants fails as a unit and takes the whole set back through the
+ladder, which is what the first guard exists to prevent.
+
 **Where a task's approach depends on how a dependency behaves internally, settle it now — while writing the packet — not later at build time.** Decompile it, read its source, ask the database for its actual plan or lock state, print what the framework actually constructed. Then state the finding in the packet as a verified fact and name how it was verified. The same claim costs a build failure if the builder has to discover it and nothing at all if the packet already answers it. A verified internal is also what lets you choose an implementation *shape* the guard can observe — a decision only planning can make.
 
 ### Probes that edit the tree
@@ -77,6 +105,39 @@ The strongest probes change a file — flip a compiler option, apply a candidate
 - **Revert every probe the moment it has answered its question**, before starting the next one. Not at the end of the run: at the end of each probe. What survives is the *finding* in the packet — the claim, the command, the output — never the edit.
 - **`git status` before you stop, and again after any interruption.** A probe left in the tree looks exactly like a builder's work to whatever runs next, and `/orchestrate` step 2 will hand it to `code-reviewer` as this task's diff. This is not hypothetical: a run interrupted mid-probe left a modified `tsconfig.json` behind and caught it only on resume.
 - **Record the probes you rejected, not just the one that worked.** A candidate fix you ran and disproved is worth a line in the packet, because otherwise the builder tries it. Say what it produced — "clears the compile error and yields `EventBus is not a function`" tells the builder more than "this approach is wrong".
+
+### Choosing a task's route
+
+Every packet carries a `Route:` field that `/orchestrate` reads at step 2. You own it; no later
+stage changes it except the promotion rule below, and it is a **planning** decision precisely
+because the evidence needed to make it is in front of you now and gone by build time.
+
+- **`full`** — the default. Every task gets it unless all four conditions below hold.
+- **`direct`** — `/orchestrate` collapses its build and test stages into a single `builder` spawn
+  that runs the profile's test command itself and reports the measured output. Review and recording
+  are unchanged. Four spawns become three.
+
+**Eligibility is evidence, not size.** A one-line change to a load-bearing branch is not eligible; a
+fifty-line rename across one file is. All four must hold, and the packet must say which reason
+carried each:
+
+1. **No `[runtime]` or `[runtime:ui]` acceptance criteria.** A criterion observable against the
+   running app needs `verifier`, and `verifier` runs only on the full route.
+2. **No new files.** A created file changes the diff recipe `/orchestrate` builds at review time,
+   and a file that has never been reviewed gets the full pass.
+3. **One file, or one mechanical pattern across files that the batching rule above already
+   grouped.** "Mechanical" means the edit is determined by the invariant — a rename, a constant, a
+   signature applied uniformly — not chosen per site.
+4. **The change does not alter behavior the suite covers.** This is the load-bearing one. On the
+   direct route the test verdict is self-reported by the agent that wrote the code, so it is a
+   regression check, not the evidence for the change. Where the suite's result *is* the evidence,
+   the route is `full`, whatever the diff looks like.
+
+**When you cannot settle a condition, write `full`.** The route is an optimization, and an
+optimization that has to be argued for is one that has already cost more than it saves.
+
+If the profile's Loop budgets section reads `Direct route: disabled`, write `full` on every packet
+and say in `loop/PLAN.md` that project policy set it.
 
 Overwrite `loop/PLAN.md`:
 
@@ -105,9 +166,16 @@ Clear `loop/tasks/T-*.md` and write fresh packets, numbering from `T-001` (numbe
 
 ```
 # T-00X — <title>
-Unit: <work item ref>   Status: pending
+Unit: <work item ref>   Status: pending   Route: <full | direct>
 <!-- Status is owned by /orchestrate from here on: it records the escalation
-     ladder's position there so a dead session doesn't restart it at zero. -->
+     ladder's position there so a dead session doesn't restart it at zero.
+     Route is owned by you, set once from the four conditions above; the only
+     later change is /orchestrate promoting a direct task to full on a review
+     finding, which it records in Status rather than here. -->
+
+## Route reason
+<which of the four conditions decided it, in one line — omit on a `full` packet
+whose ineligibility is obvious from its runtime criteria>
 
 
 ## Description

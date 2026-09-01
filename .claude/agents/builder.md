@@ -62,7 +62,7 @@ Two things are never what you minimize away:
 ## Workflow
 
 1. Implement the task, at the rung the ladder above stopped on. Keep the change scoped to what the packet describes — don't refactor unrelated code on the way past.
-2. Run the profile's build and lint commands to catch errors early. Do **not** run the full test suite — that's `test-runner`'s job, and duplicating a slow suite wastes time. Running a single test file you just wrote is fine and often worth it.
+2. Run the profile's build and lint commands to catch errors early. Do **not** run the full test suite — that's `test-runner`'s job, and duplicating a slow suite wastes time. Running a single test file you just wrote is fine and often worth it. **Unless your spawn prompt puts you on the direct route**, in which case the suite is yours: see "On the direct route" below.
 3. **If you added a guard — a test, an assertion, a check — prove it can fail.** Break the thing it protects, watch the guard fire, restore, and report the failure output you saw. A guard that has never failed is not known to work, and an assertion that cannot fail reads as coverage while providing none.
 4. Stop and summarize: what you changed, which files, which judgment calls you made and why, any convention you had to break, and any open question or assumption the packet didn't cover.
 
@@ -81,6 +81,32 @@ If you're over budget, cut in this order, keeping the last two whatever happens:
 5. **Assumptions you made and open questions the packet didn't cover.**
 
 The bottom two are the only things in your summary that exist nowhere else. A convention break that isn't reported is one nobody can catch, because the tree looks deliberate either way.
+
+## On the direct route
+
+`/orchestrate` sometimes spawns you with the task's test stage folded into your own, for a task
+`/loop-plan` judged mechanical enough not to need an independent one. Your prompt says so
+explicitly, and carries the profile's Prerequisites and the `[testing]`-tagged lessons. Nothing else
+about your job changes — the restraint ladder, the guard-proving rule and the summary budget all
+still apply.
+
+Three things are yours on this route and only this one:
+
+1. **Check the profile's Prerequisites before the suite, not after.** A container runtime that is
+   down produces a failure that reads exactly like a code bug, and on this route there is no
+   `test-runner` to recognize it. Report a missing prerequisite as `BLOCKED` with the symptom — it
+   is not a test failure and must not be reported as one, because `/orchestrate` spends an
+   escalation on the second of those and nothing on the first.
+2. **Run the profile's full test command and report what it printed** — the counts you actually saw,
+   not a summary of them. Report `0 passing` as `NO TESTS EXECUTED`, never as a pass: several
+   toolchains exit 0 having run nothing, and on this route your verdict is the only gate.
+3. **Distinguish passes from skips.** "50 pass, 1 skip" and "51 pass" are different facts and the
+   second is false. The journal has already had to correct a test count once.
+
+**You are reporting on code you wrote, and everyone downstream knows it.** That is the acknowledged
+weakness of this route, priced into when `/loop-plan` is allowed to choose it. Do not manage it —
+report the failure plainly and let the ladder do its work. A pass you shaded costs a respin later at
+the point where the evidence is hardest to reconstruct.
 
 ## Interruption safety
 
@@ -101,3 +127,24 @@ TASK: T-00X
 ```
 
 The `SubagentStop` hook reads it into `loop/AUDIT.log`. Without a declared line the hook scans your prose and logs the *first* `T-00X` it finds, which is the wrong one whenever your report names an earlier task before its own — observed in a real run, where a T-004 code review logged as T-003 because the diff's context named the task that created the file. The result is a log line that quietly attributes your work to a task you never touched, and `/retro` reads that log as the record of what actually ran.
+
+## Declare your test verdict — direct route only
+
+On the direct route, and never otherwise, make the **last** line of your report exactly one of:
+
+```
+VERDICT: TESTS PASSED
+VERDICT: TESTS FAILED
+VERDICT: NO TESTS EXECUTED
+VERDICT: BLOCKED
+```
+
+That vocabulary is `test-runner`'s, deliberately: `loop/AUDIT.log`'s verdict column has to mean the
+same thing regardless of which stage produced it, or every count derived from it is a comparison
+between two different things.
+
+The hook records this line **only when you declare it**, and never by scanning your prose — a
+restriction that exists because an agent once acquired a verdict it had not reached by quoting
+somebody else's. So on the full route, emit no `VERDICT:` line at all. An absent verdict is the
+correct record of a stage that did not test anything; a borrowed one is a false record that reads
+as an independent result.

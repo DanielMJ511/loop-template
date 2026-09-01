@@ -25,6 +25,13 @@ rather than constraints.
 | Type check | `<cmd, or "none">` | |
 | Run the app locally | `<cmd, or "n/a">` | |
 
+**Keep this section and Conventions tight — they are the per-spawn floor.** `/orchestrate` hands
+both to *every* agent it spawns, so a line added here is paid four to nine times per task, forever.
+Measured in one adopting project: Commands had grown to 9.4 KB and Conventions to 6.0 KB, ~3.9k
+tokens on every spawn. Anything a builder cannot act on — release procedure, CI matrix, historical
+rationale, commands only `/loop-init` or `/retro` ever run — belongs in a project doc this file
+points at, not in the floor.
+
 **Prerequisites** — anything that must be true before the test suite can pass, and the exact
 symptom when it isn't. `test-runner` checks these first, because a missing prerequisite produces a
 failure that reads like a code bug.
@@ -190,6 +197,13 @@ than a guardrail.
 - **Max tasks per `/orchestrate` run**: `<n, or "unbounded — the plan's task list is the limit">`.
   `/orchestrate` walks a finite list and stops, so this is a planning ceiling rather than an enforced
   one — the guard does not check it, because a run has no durable boundary it could read.
+- **Direct route**: `<enabled | disabled>` — `<reason>`. When enabled, `/loop-plan` may mark a
+  mechanical task `Route: direct` and `/orchestrate` folds its test stage into the build spawn,
+  costing three spawns instead of four. The saving is real but the evidence is weaker: the test
+  verdict then comes from the agent that wrote the code. Set `disabled` where that trade is wrong
+  for this project — a codebase whose suite *is* the specification, or one where a wrong result
+  reaches something you cannot roll back. `/orchestrate` treats `disabled` as outranking any
+  packet, and treats a packet with no `Route:` line as `full`.
 
 ---
 
